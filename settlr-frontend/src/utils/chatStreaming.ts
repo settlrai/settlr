@@ -1,3 +1,4 @@
+import { BASE_URL } from "@/constants/api";
 import { SetMessagesAction } from "@/types/chat";
 import { fetchEventSource } from "@microsoft/fetch-event-source";
 
@@ -8,7 +9,7 @@ export async function streamChatMessage(
   let assistantMessageIndex = -1;
 
   try {
-    await fetchEventSource("http://localhost:8000/chat/stream", {
+    await fetchEventSource(`${BASE_URL}/chat/stream`, {
       method: "POST",
       body: JSON.stringify({ message }),
       headers: {
