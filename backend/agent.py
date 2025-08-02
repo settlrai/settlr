@@ -6,6 +6,7 @@ import anthropic
 from anthropic.types import Message
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
+from regional_interests_tool import get_regional_interests
 
 class UrbanExplorerAgent:
     def __init__(self):
@@ -38,13 +39,33 @@ class UrbanExplorerAgent:
                     },
                     "required": ["area_name"]
                 }
+            },
+            {
+                "name": "get_regional_interests_for_area",
+                "description": "Get boundary coordinates for a London area/neighborhood. Returns coordinate array for polygon rendering on maps.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "area_coordinates": {
+                            "type": "string",
+                            "description": "Coordinates of the London area (e.g., \"[[-0.095,51.535],[-0.095,51.533],[-0.094,51.531],[-0.095,51.535]]\")"
+                        },
+                         "interests": {
+                            "type": "string",
+                            "description": "list of interests (e.g \"[karaoke bars, boxing clubs, pizza places]\")"
+                        }
+
+                    },
+                    "required": ["area_coordinates", "interests"]
+                }
             }
         ]
     
     def _get_tool_function(self, tool_name: str) -> Callable:
         """Get the actual function for a tool name."""
         tool_functions = {
-            "get_coordinates_for_area": get_area_coordinates
+            "get_coordinates_for_area": get_area_coordinates,
+            "get_regional_interests_for_area": get_regional_interests
         }
         return tool_functions.get(tool_name)
     
