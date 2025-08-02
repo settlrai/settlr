@@ -1,68 +1,148 @@
 import os
+import json
 from pathlib import Path
-from typing import Generator, List, Tuple
+from typing import Generator, List, Dict, Any, Callable
 import anthropic
 from anthropic.types import Message
-from anthropic.lib.streaming import MessageStream
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
 
-class UrbanExplorer:
+class UrbanExplorerAgent:
     def __init__(self):
         load_dotenv()
         self.client = anthropic.Anthropic(
             api_key=os.getenv("ANTHROPIC_API_KEY")
         )
-        self.system_prompt = self._load_system_prompt()
+        self.name = "UrbanExplorer"
+        self.instructions = self._load_instructions()
+        self.tools = self._define_tools()
+        self.model = "claude-sonnet-4-20250514"  # Claude 4.0
         
-    def _load_system_prompt(self):
+    def _load_instructions(self) -> str:
         prompt_path = Path(__file__).parent.parent / "system-prompt.md"
         with open(prompt_path, 'r', encoding='utf-8') as f:
             return f.read()
     
-    def chat(self, user_message: str, conversation_history: list = []) -> str:
-        messages = conversation_history + [{"role": "user", "content": user_message}]
-        
-        response: Message = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            system=self.system_prompt,
-            messages=messages
-        )
-        
-        return response.content[0].text
+    def _define_tools(self) -> List[Dict[str, Any]]:
+        return [
+            {
+                "name": "get_coordinates_for_area",
+                "description": "Get boundary coordinates for a London area/neighborhood. Returns coordinate array for polygon rendering on maps.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "area_name": {
+                            "type": "string",
+                            "description": "Name of the London area (e.g., 'Shoreditch', 'Camden', 'King's Cross')"
+                        }
+                    },
+                    "required": ["area_name"]
+                }
+            }
+        ]
     
-    def chat_stream(self, user_message: str, conversation_history: list = []) -> Generator[str, None, None]:
-        messages = conversation_history + [{"role": "user", "content": user_message}]
-        
-        stream: MessageStream = self.client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            system=self.system_prompt,
-            messages=messages,
-            stream=True
-        )
-        
-        for chunk in stream:
-            if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
-                yield chunk.delta.text
+    def _get_tool_function(self, tool_name: str) -> Callable:
+        """Get the actual function for a tool name."""
+        tool_functions = {
+            "get_coordinates_for_area": get_area_coordinates
+        }
+        return tool_functions.get(tool_name)
     
-    def get_coordinates_for_area(self, area_name: str) -> str:
-        """
-        Get coordinates for a London area using small LLM.
+    def run(self, user_message: str) -> str:
+        """Run the agent with a user message. Handles tool calling automatically."""
+        messages = [{"role": "user", "content": user_message}]
         
-        Args:
-            area_name: Name of the London area
-            
-        Returns:
-            Raw coordinate array string from agent
-        """
-        return get_area_coordinates(area_name)
+        try:
+            while True:
+                print(f"[DEBUG] Sending to Claude with {len(messages)} messages")
+                
+                # Get response from Claude
+                response: Message = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=2000,
+                    system=self.instructions,
+                    messages=messages,
+                    tools=self.tools
+                )
+                
+                print(f"[DEBUG] Got response with {len(response.content)} content blocks")
+                
+                # Check if we have tool calls
+                tool_calls = [block for block in response.content if block.type == "tool_use"]
+                text_blocks = [block for block in response.content if block.type == "text"]
+                
+                if tool_calls:
+                    print(f"[DEBUG] Found {len(tool_calls)} tool calls")
+                    
+                    # Add assistant message with all content
+                    messages.append({"role": "assistant", "content": response.content})
+                    
+                    # Execute each tool and add results
+                    for tool_call in tool_calls:
+                        tool_name = tool_call.name
+                        tool_input = tool_call.input
+                        print(f"[DEBUG] Executing tool: {tool_name} with input: {tool_input}")
+                        
+                        tool_function = self._get_tool_function(tool_name)
+                        if tool_function:
+                            try:
+                                tool_result = tool_function(**tool_input)
+                                print(f"[DEBUG] Tool result: {tool_result[:100]}...")
+                                
+                                # Add tool result
+                                messages.append({
+                                    "role": "user",
+                                    "content": [{
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_call.id,
+                                        "content": str(tool_result)
+                                    }]
+                                })
+                            except Exception as e:
+                                print(f"[DEBUG] Tool execution error: {e}")
+                                messages.append({
+                                    "role": "user",
+                                    "content": [{
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_call.id,
+                                        "content": f"Error executing tool: {str(e)}"
+                                    }]
+                                })
+                        else:
+                            print(f"[DEBUG] Tool not found: {tool_name}")
+                            messages.append({
+                                "role": "user",
+                                "content": [{
+                                    "type": "tool_result",
+                                    "tool_use_id": tool_call.id,
+                                    "content": f"Error: Tool {tool_name} not found"
+                                }]
+                            })
+                    
+                    # Continue loop to get final response
+                    continue
+                else:
+                    # No tool calls, return the text response
+                    if text_blocks:
+                        return text_blocks[0].text
+                    else:
+                        return "No text response generated"
+                        
+        except Exception as e:
+            print(f"[DEBUG] Agent error: {e}")
+            return f"Agent error: {str(e)}"
+    
+    def run_stream(self, user_message: str) -> Generator[str, None, None]:
+        """Run the agent with streaming output. Handles tool calling automatically."""
+        # For streaming, we need to run the full conversation first, then stream the final response
+        final_response = self.run(user_message)
+        
+        # Stream the final response character by character
+        for char in final_response:
+            yield char
     
     def run_interactive(self):
-        conversation_history = []
-        
-        print("UrbanExplorer is ready! Type 'exit' to quit.")
+        print("UrbanExplorer Agent is ready! Type 'exit' to quit.")
         
         while True:
             try:
@@ -74,13 +154,8 @@ class UrbanExplorer:
                 if not user_input:
                     continue
                 
-                response = self.chat(user_input, conversation_history)
+                response = self.run(user_input)
                 print(f"\nUrbanExplorer: {response}")
-                
-                conversation_history.extend([
-                    {"role": "user", "content": user_input},
-                    {"role": "assistant", "content": response}
-                ])
                 
             except KeyboardInterrupt:
                 break

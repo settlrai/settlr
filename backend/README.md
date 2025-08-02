@@ -43,7 +43,7 @@ The API will be available at `http://localhost:8000`
 # Streaming chat
 curl -X POST "http://localhost:8000/chat/stream" \
   -H "Content-Type: application/json" \
-  -d '{"message": "I want a trendy area in London", "conversation_history": []}'
+  -d '{"message": "I want a trendy area in London and return me list of coordinates for it", "conversation_history": []}'
 
 # Non-streaming chat
 curl -X POST "http://localhost:8000/chat" \
