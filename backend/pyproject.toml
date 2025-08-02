@@ -12,5 +12,6 @@ dependencies = [
     "python-socketio>=5.11.0",
     "python-engineio>=4.9.0",
     "requests>=2.31.0",
-    "websocket-client>=1.6.0"
+    "websocket-client>=1.6.0",
+    "sqlalchemy>=2.0.0"
 ]

@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
 from map_update_tool import update_map, clear_map, get_map_state
 from regional_interests_tool import get_regional_interests
+from conversation_manager import get_conversation_manager
 
 class UrbanExplorerAgent:
     def __init__(self):
@@ -19,6 +20,7 @@ class UrbanExplorerAgent:
         self.instructions = self._load_instructions()
         self.tools = self._define_tools()
         self.model = "claude-sonnet-4-20250514"  # Claude 4.0
+        self.conversation_manager = get_conversation_manager()
         
     def _load_instructions(self) -> str:
         prompt_path = Path(__file__).parent.parent / "system-prompt.md"
@@ -113,9 +115,10 @@ class UrbanExplorerAgent:
         }
         return tool_functions.get(tool_name)
     
-    def run(self, user_message: str) -> str:
-        """Run the agent with a user message. Handles tool calling automatically."""
-        messages = [{"role": "user", "content": user_message}]
+    def run(self, user_message: str, conversation_id: str) -> str:
+        """Run the agent with a user message and conversation ID. Handles tool calling automatically."""
+        # Load conversation history (user message already added by API)
+        messages = self.conversation_manager.get_conversation_history(conversation_id)
         
         try:
             while True:
@@ -187,19 +190,37 @@ class UrbanExplorerAgent:
                     # Continue loop to get final response
                     continue
                 else:
-                    # No tool calls, return the text response
+                    # No tool calls, save assistant response and return
                     if text_blocks:
-                        return text_blocks[0].text
+                        assistant_response = text_blocks[0].text
+                        
+                        # Extract tool calls from the response for saving
+                        tool_calls = self.conversation_manager.extract_tool_calls_from_response(response.content)
+                        
+                        # Save assistant response to conversation
+                        self.conversation_manager.add_assistant_message(
+                            conversation_id, 
+                            assistant_response, 
+                            tool_calls
+                        )
+                        
+                        return assistant_response
                     else:
-                        return "No text response generated"
+                        error_msg = "No text response generated"
+                        self.conversation_manager.add_assistant_message(conversation_id, error_msg)
+                        return error_msg
                         
         except Exception as e:
             print(f"[DEBUG] Agent error: {e}")
             return f"Agent error: {str(e)}"
     
-    def run_stream(self, user_message: str) -> Generator[str, None, None]:
-        """Run the agent with streaming output. Handles tool calling automatically."""
-        messages = [{"role": "user", "content": user_message}]
+    def run_stream(self, user_message: str, conversation_id: str) -> Generator[str, None, None]:
+        """Run the agent with streaming output and conversation ID. Handles tool calling automatically."""
+        # Load conversation history (user message already added by API)
+        messages = self.conversation_manager.get_conversation_history(conversation_id)
+        
+        # Variable to collect the final assistant response
+        final_response = ""
         
         try:
             while True:
@@ -270,7 +291,13 @@ class UrbanExplorerAgent:
                     
                     for chunk in stream:
                         if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
+                            final_response += chunk.delta.text
                             yield chunk.delta.text
+                    
+                    # Save the final assistant response to conversation
+                    if final_response:
+                        self.conversation_manager.add_assistant_message(conversation_id, final_response)
+                    
                     return
                         
         except Exception as e:
