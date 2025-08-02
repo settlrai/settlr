@@ -61,34 +61,6 @@ async def chat_stream(request: ChatRequest):
     )
 
 
-@fastapi_app.post("/chat")
-async def chat(request: ChatRequest):
-    conversation_manager = get_conversation_manager()
-    
-    # Check if conversation exists, create if not
-    if not conversation_manager.conversation_exists(request.conversation_id):
-        # Create new conversation with client-provided ID
-        conversation_manager.create_conversation_with_id(request.conversation_id, request.message)
-        print(f"[DEBUG] Created new conversation: {request.conversation_id}")
-    else:
-        # Add user message to existing conversation
-        conversation_manager.add_user_message(request.conversation_id, request.message)
-        print(f"[DEBUG] Using existing conversation: {request.conversation_id}")
-    
-    # Create fresh agent for each request
-    agent = UrbanExplorerAgent()
-    response_text = agent.run(request.message, request.conversation_id)
-    
-    # Get conversation info
-    message_count = conversation_manager.get_message_count(request.conversation_id)
-    
-    return {
-        "response": response_text,
-        "conversation_id": request.conversation_id,
-        "message_count": message_count
-    }
-
-
 @fastapi_app.get("/conversations/{conversation_id}")
 async def get_conversation(conversation_id: str):
     conversation_manager = get_conversation_manager()
@@ -103,10 +75,6 @@ async def get_conversation(conversation_id: str):
         "conversation": conversation_info,
         "messages": messages
     }
-
-@fastapi_app.get("/health")
-async def health():
-    return {"status": "healthy"}
 
 # Initialize database on startup
 @fastapi_app.on_event("startup")
