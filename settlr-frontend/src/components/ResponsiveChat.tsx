@@ -74,8 +74,13 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
     }
   }, [messages]);
 
+  // Check if there are any completed assistant messages
+  const hasAssistantMessages = messages.some(
+    (msg) => msg.type === "assistant" && !msg.isStreaming && !msg.isError && msg.content.trim()
+  );
+
   // Empty state: full-width bottom input
-  if (!hasPolygons) {
+  if (!hasPolygons && !hasAssistantMessages) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 p-6">
         <form onSubmit={handleSubmit} className="w-full">
