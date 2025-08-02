@@ -2,6 +2,7 @@
 
 import { Loader } from "@googlemaps/js-api-loader";
 import { useEffect, useRef } from "react";
+import DraggableChat from "@/components/DraggableChat";
 
 const neutralMapStyle = [
   {
@@ -145,6 +146,7 @@ export default function MapPage() {
   return (
     <div className="h-screen w-screen">
       <div ref={mapRef} className="h-full w-full" />
+      <DraggableChat />
     </div>
   );
 }
