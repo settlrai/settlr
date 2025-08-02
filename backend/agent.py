@@ -1,10 +1,11 @@
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Tuple
 import anthropic
 from anthropic.types import Message
 from anthropic.lib.streaming import MessageStream
 from dotenv import load_dotenv
+from coordinates_tool import get_area_coordinates
 
 class UrbanExplorer:
     def __init__(self):
@@ -45,6 +46,18 @@ class UrbanExplorer:
         for chunk in stream:
             if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
                 yield chunk.delta.text
+    
+    def get_coordinates_for_area(self, area_name: str) -> str:
+        """
+        Get coordinates for a London area using small LLM.
+        
+        Args:
+            area_name: Name of the London area
+            
+        Returns:
+            Raw coordinate array string from agent
+        """
+        return get_area_coordinates(area_name)
     
     def run_interactive(self):
         conversation_history = []
