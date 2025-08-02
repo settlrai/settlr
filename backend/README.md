@@ -6,6 +6,7 @@ Simple AI agent implementation using Anthropic's API to provide London neighborh
 
 1. Install dependencies:
    ```bash
+   cd backend
    uv sync
    ```
 
@@ -45,6 +46,10 @@ curl -X POST "http://localhost:8000/chat/stream" \
   -H "Content-Type: application/json" \
   -d '{"message": "I want a trendy area in London and return me list of coordinates for it", "conversation_history": []}'
 
+curl -X POST "http://localhost:8000/chat/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I want a list of points of interests for this area_coordinates: [[-0.095,51.535],[-0.095,51.533],[-0.094,51.531],[-0.095,51.535]], and list of interests: [karaoke bars, boxing clubs, pizza places", "conversation_history": []}'
+  
 # Non-streaming chat
 curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
