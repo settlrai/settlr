@@ -2,6 +2,7 @@
 
 import { ChatMessagesState } from "@/types/chat";
 import { streamChatMessage } from "@/utils/chatStreaming";
+import { getOrCreateSessionId } from "@/utils/sessionUtils";
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +15,7 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessagesState>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,11 +50,21 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
     setInputValue("");
 
     try {
-      await streamChatMessage(userMessage, setMessages);
+      await streamChatMessage(
+        {
+          message: userMessage,
+          conversation_id: sessionId,
+        },
+        setMessages
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
 
   useEffect(() => {
     const hasStreamingMessage = messages.some((msg) => msg.isStreaming);
@@ -62,8 +74,13 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
     }
   }, [messages]);
 
+  // Check if there are any completed assistant messages
+  const hasAssistantMessages = messages.some(
+    (msg) => msg.type === "assistant" && !msg.isStreaming && !msg.isError && msg.content.trim()
+  );
+
   // Empty state: full-width bottom input
-  if (!hasPolygons) {
+  if (!hasPolygons && !hasAssistantMessages) {
     return (
       <div className="fixed bottom-0 left-0 right-0 z-50 p-6">
         <form onSubmit={handleSubmit} className="w-full">
