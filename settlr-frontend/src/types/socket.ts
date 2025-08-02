@@ -1,4 +1,5 @@
 import { Socket } from "socket.io-client";
+import { Polygon } from "./map";
 
 export type SocketStatus =
   | "connecting"
@@ -14,8 +15,6 @@ export interface SocketHookOptions {
   onError?: (error: Error) => void;
   autoConnect?: boolean;
 }
-
-type Polygon = [number, number][];
 
 type SettlrMapUpdateData = {
   type: "map_update";

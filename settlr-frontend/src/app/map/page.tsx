@@ -2,9 +2,9 @@
 
 import DraggableChat from "@/components/DraggableChat";
 import { SOCKET_PATH, SOCKET_URL } from "@/constants/api";
-import { Locations } from "@/constants/coords";
 import { NeutralMapStyle } from "@/constants/mapThemes";
 import { useSocket } from "@/hooks/useSocket";
+import { Polygon } from "@/types/map";
 import { SettlrEvents } from "@/types/socket";
 import { Loader } from "@googlemaps/js-api-loader";
 import { useEffect, useRef, useState } from "react";
@@ -16,6 +16,8 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
+  const [mapPolygons, setMapPolygons] = useState<Polygon[]>([]);
+  const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
 
   const {
     status: socketStatus,
@@ -39,6 +41,9 @@ export default function MapPage() {
   useEffect(() => {
     const handleMapUpdate: SettlrEvents["map_update"] = (data) => {
       console.log("Received map update:", data);
+      if (data.action === "add") {
+        setMapPolygons((prev) => [...prev, data.coordinates]);
+      }
     };
 
     if (isConnected) {
@@ -58,7 +63,7 @@ export default function MapPage() {
         version: "weekly",
       });
 
-      const { Map, Polygon } = await loader.importLibrary("maps");
+      const { Map } = await loader.importLibrary("maps");
 
       if (mapRef.current) {
         const map = new Map(mapRef.current, {
@@ -71,21 +76,6 @@ export default function MapPage() {
         });
 
         mapInstanceRef.current = map;
-
-        const polygonCoords = Locations.CanaryWhart.map((coord) => ({
-          lat: coord[1],
-          lng: coord[0],
-        }));
-
-        new Polygon({
-          paths: polygonCoords,
-          strokeColor: "#2D3748",
-          strokeOpacity: 0.8,
-          strokeWeight: 2,
-          fillColor: "#EDF2F7",
-          fillOpacity: 0.35,
-          map: map,
-        });
 
         const checkIfMapMoved = () => {
           const currentCenter = map.getCenter();
@@ -108,6 +98,50 @@ export default function MapPage() {
 
     initMap();
   }, []);
+
+  useEffect(() => {
+    const renderPolygons = async () => {
+      if (!mapInstanceRef.current) {
+        return;
+      }
+
+      polygonInstancesRef.current.forEach((polygon) => {
+        polygon.setMap(null);
+      });
+      polygonInstancesRef.current = [];
+
+      if (mapPolygons.length === 0) {
+        return;
+      }
+
+      const loader = new Loader({
+        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        version: "weekly",
+      });
+      const { Polygon } = await loader.importLibrary("maps");
+
+      mapPolygons.forEach((polygonData) => {
+        const polygonCoords = polygonData.map((coord) => ({
+          lat: coord[1],
+          lng: coord[0],
+        }));
+
+        const polygonInstance = new Polygon({
+          paths: polygonCoords,
+          strokeColor: "#2D3748",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#EDF2F7",
+          fillOpacity: 0.35,
+          map: mapInstanceRef.current,
+        });
+
+        polygonInstancesRef.current.push(polygonInstance);
+      });
+    };
+
+    renderPolygons();
+  }, [mapPolygons]);
 
   const resetMapView = () => {
     if (mapInstanceRef.current) {
