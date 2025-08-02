@@ -1,0 +1,10 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "UrbanExplorer AI agent for location discovery"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "anthropic>=0.7.0",
+    "python-dotenv>=1.0.0"
+]
