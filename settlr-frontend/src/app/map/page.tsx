@@ -16,6 +16,23 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DEFAULT_CENTER = { lat: 51.5072, lng: -0.1276 };
 const DEFAULT_ZOOM = 11;
 
+const ChatSize = 400;
+
+// Map padding constants for consistent spacing around chat component
+const MAP_PADDING = {
+  top: 20,
+  right: ChatSize + 20, // Chat width (384px) + margin (20px) + buffer (16px)
+  bottom: 20,
+  left: 20,
+};
+
+const SINGLE_POLYGON_PADDING = {
+  top: 40,
+  right: ChatSize + 20, // Chat width (384px) + margin (20px) + buffer (16px)
+  bottom: 40,
+  left: 40,
+};
+
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
@@ -125,15 +142,22 @@ export default function MapPage() {
       });
     });
 
-    const padding = {
-      top: 20,
-      right: 420, // Chat width (384px) + margin (20px) + buffer (16px)
-      bottom: 20,
-      left: 20,
-    };
-
-    mapInstanceRef.current.fitBounds(bounds, padding);
+    mapInstanceRef.current.fitBounds(bounds, MAP_PADDING);
   }, [mapPolygons]);
+
+  const fitSinglePolygonBounds = useCallback(
+    (polygonCoords: google.maps.LatLngLiteral[]) => {
+      if (!mapInstanceRef.current) {
+        return;
+      }
+
+      const bounds = new google.maps.LatLngBounds();
+      polygonCoords.forEach((coord) => bounds.extend(coord));
+
+      mapInstanceRef.current.fitBounds(bounds, SINGLE_POLYGON_PADDING);
+    },
+    []
+  );
 
   useEffect(() => {
     const renderPolygons = async () => {
@@ -179,6 +203,11 @@ export default function MapPage() {
           map: mapInstanceRef.current,
         });
 
+        // Add click event listener to zoom to this polygon
+        polygonInstance.addListener("click", () => {
+          fitSinglePolygonBounds(polygonCoords);
+        });
+
         polygonInstancesRef.current.push(polygonInstance);
 
         // Calculate polygon center for label placement
@@ -211,7 +240,7 @@ export default function MapPage() {
     };
 
     renderPolygons();
-  }, [mapPolygons, fitPolygonBounds]);
+  }, [mapPolygons, fitPolygonBounds, fitSinglePolygonBounds]);
 
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
