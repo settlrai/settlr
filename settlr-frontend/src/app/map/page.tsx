@@ -1,13 +1,18 @@
 "use client";
 
 import DraggableChat, { DraggableChatRef } from "@/components/DraggableChat";
-import { SOCKET_PATH, SOCKET_URL } from "@/constants/api";
+import {
+  GOOGLE_MAPS_API_KEY,
+  GOOGLE_MAPS_MAP_ID,
+  SOCKET_PATH,
+  SOCKET_URL,
+} from "@/constants/api";
 import { NeutralMapStyle } from "@/constants/mapThemes";
 import { useSocket } from "@/hooks/useSocket";
-import { Polygon } from "@/types/map";
+import { PolygonWithArea } from "@/types/map";
 import { SettlrEvents } from "@/types/socket";
 import { Loader } from "@googlemaps/js-api-loader";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const DEFAULT_CENTER = { lat: 51.5072, lng: -0.1276 };
 const DEFAULT_ZOOM = 11;
@@ -17,8 +22,11 @@ export default function MapPage() {
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const chatRef = useRef<DraggableChatRef>(null);
   const [showResetButton, setShowResetButton] = useState(false);
-  const [mapPolygons, setMapPolygons] = useState<Polygon[]>([]);
+  const [mapPolygons, setMapPolygons] = useState<PolygonWithArea[]>([]);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
+  const labelInstancesRef = useRef<google.maps.marker.AdvancedMarkerElement[]>(
+    []
+  );
 
   const {
     status: socketStatus,
@@ -43,7 +51,13 @@ export default function MapPage() {
     const handleMapUpdate: SettlrEvents["map_update"] = (data) => {
       console.log("Received map update:", data);
       if (data.action === "add") {
-        setMapPolygons((prev) => [...prev, data.coordinates]);
+        setMapPolygons((prev) => [
+          ...prev,
+          {
+            coordinates: data.coordinates,
+            area_name: data.area_name,
+          },
+        ]);
       }
     };
 
@@ -58,9 +72,8 @@ export default function MapPage() {
 
   useEffect(() => {
     const initMap = async () => {
-      const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
       const loader = new Loader({
-        apiKey,
+        apiKey: GOOGLE_MAPS_API_KEY,
         version: "weekly",
       });
 
@@ -70,6 +83,7 @@ export default function MapPage() {
         const map = new Map(mapRef.current, {
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
+          mapId: GOOGLE_MAPS_MAP_ID,
           styles: NeutralMapStyle,
           disableDefaultUI: true,
           gestureHandling: "greedy",
@@ -100,15 +114,15 @@ export default function MapPage() {
     initMap();
   }, []);
 
-  const fitPolygonBounds = () => {
+  const fitPolygonBounds = useCallback(() => {
     if (!mapInstanceRef.current || mapPolygons.length === 0) {
       return;
     }
 
     const bounds = new google.maps.LatLngBounds();
 
-    mapPolygons.forEach((polygonData) => {
-      polygonData.forEach((coord) => {
+    mapPolygons.forEach((polygonWithArea) => {
+      polygonWithArea.coordinates.forEach((coord) => {
         bounds.extend({ lat: coord[1], lng: coord[0] });
       });
     });
@@ -121,7 +135,7 @@ export default function MapPage() {
     };
 
     mapInstanceRef.current.fitBounds(bounds, padding);
-  };
+  }, [mapPolygons]);
 
   useEffect(() => {
     const renderPolygons = async () => {
@@ -129,23 +143,30 @@ export default function MapPage() {
         return;
       }
 
+      // Clear existing polygons and labels
       polygonInstancesRef.current.forEach((polygon) => {
         polygon.setMap(null);
       });
       polygonInstancesRef.current = [];
+
+      labelInstancesRef.current.forEach((label) => {
+        label.map = null;
+      });
+      labelInstancesRef.current = [];
 
       if (mapPolygons.length === 0) {
         return;
       }
 
       const loader = new Loader({
-        apiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "",
+        apiKey: GOOGLE_MAPS_API_KEY,
         version: "weekly",
       });
       const { Polygon } = await loader.importLibrary("maps");
+      const { AdvancedMarkerElement } = await loader.importLibrary("marker");
 
-      mapPolygons.forEach((polygonData) => {
-        const polygonCoords = polygonData.map((coord) => ({
+      mapPolygons.forEach((polygonWithArea) => {
+        const polygonCoords = polygonWithArea.coordinates.map((coord) => ({
           lat: coord[1],
           lng: coord[0],
         }));
@@ -161,6 +182,26 @@ export default function MapPage() {
         });
 
         polygonInstancesRef.current.push(polygonInstance);
+
+        // Calculate polygon center for label placement
+        const bounds = new google.maps.LatLngBounds();
+        polygonCoords.forEach((coord) => bounds.extend(coord));
+        const center = bounds.getCenter();
+
+        // Create label element
+        const labelDiv = document.createElement("div");
+        labelDiv.className =
+          "bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium text-gray-800 shadow-md border border-gray-200";
+        labelDiv.textContent = polygonWithArea.area_name;
+
+        // Create advanced marker for the label
+        const labelMarker = new AdvancedMarkerElement({
+          position: center,
+          map: mapInstanceRef.current,
+          content: labelDiv,
+        });
+
+        labelInstancesRef.current.push(labelMarker);
       });
 
       // Move chat to side when polygons are added
@@ -172,7 +213,7 @@ export default function MapPage() {
     };
 
     renderPolygons();
-  }, [mapPolygons]);
+  }, [mapPolygons, fitPolygonBounds]);
 
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
