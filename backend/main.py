@@ -1,7 +1,7 @@
-from agent import UrbanExplorer
+from agent import UrbanExplorerAgent
 
 def main():
-    agent = UrbanExplorer()
+    agent = UrbanExplorerAgent()
     agent.run_interactive()
 
 if __name__ == "__main__":
