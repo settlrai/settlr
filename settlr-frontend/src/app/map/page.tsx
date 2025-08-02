@@ -266,13 +266,13 @@ export default function MapPage() {
       {showResetButton && (
         <button
           onClick={resetMapView}
-          className="absolute top-4 right-4 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 shadow-lg transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900 z-10"
+          className="absolute top-4 left-4 bg-white hover:bg-gray-50 border border-gray-300 rounded-lg px-4 py-2 shadow-lg transition-all duration-200 text-sm font-medium text-gray-700 hover:text-gray-900 z-10"
         >
           Reset View
         </button>
       )}
 
-      <div className="absolute top-4 left-4 z-10">
+      <div className="absolute bottom-16 left-4 z-10">
         <div
           className={`px-3 py-1 rounded-full text-xs font-medium ${
             socketStatus === "connected"
