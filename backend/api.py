@@ -7,7 +7,7 @@ import socketio
 from agent import UrbanExplorerAgent
 from websocket_manager import websocket_manager
 from conversation_manager import get_conversation_manager
-from database import init_database
+from database import init_database, get_db_manager
 
 # Create FastAPI app
 fastapi_app = FastAPI(title="UrbanExplorer API", version="1.0.0")
@@ -60,21 +60,26 @@ async def chat_stream(request: ChatRequest):
         }
     )
 
-
 @fastapi_app.get("/conversations/{conversation_id}")
-async def get_conversation(conversation_id: str):
-    conversation_manager = get_conversation_manager()
+async def get_conversation_map(conversation_id: str):
+    db_manager = get_db_manager()
     
-    if not conversation_manager.conversation_exists(conversation_id):
-        raise HTTPException(status_code=404, detail="Conversation not found")
+    # Get regions for this conversation
+    regions = db_manager.get_conversation_regions(conversation_id)
     
-    conversation_info = conversation_manager.get_conversation(conversation_id)
-    messages = conversation_manager.get_conversation_history(conversation_id)
+    # Convert to dict format
+    regions_data = [region.to_dict() for region in regions]
     
-    return {
-        "conversation": conversation_info,
-        "messages": messages
-    }
+    # Send via websocket
+    for region in regions_data:
+        if region.get('coordinates'):
+            await websocket_manager.broadcast_map_update(
+                area_name=region['region_name'],
+                coordinates=region['coordinates'],
+                action="add"
+            )
+    
+    return {"status": "sent", "conversation_id": conversation_id, "regions_count": len(regions_data)}
 
 # Initialize database on startup
 @fastapi_app.on_event("startup")
