@@ -5,11 +5,14 @@ Simple AI agent implementation using Anthropic's API to provide London neighborh
 ## Setup
 
 1. Install dependencies:
+
    ```bash
+   cd backend
    uv sync
    ```
-   
+
    If you encounter Socket.IO compatibility issues, update dependencies:
+
    ```bash
    uv sync --upgrade
    ```
@@ -23,7 +26,9 @@ Simple AI agent implementation using Anthropic's API to provide London neighborh
 ## Usage
 
 ### CLI Mode
+
 Run the interactive agent:
+
 ```bash
 uv run python main.py
 ```
@@ -31,7 +36,9 @@ uv run python main.py
 Type 'exit' or press Ctrl+C to quit.
 
 ### API Mode
+
 Start the FastAPI server with WebSocket support:
+
 ```bash
 uv run uvicorn api:app --reload
 ```
@@ -39,6 +46,7 @@ uv run uvicorn api:app --reload
 The API will be available at `http://localhost:8000`
 
 #### Endpoints
+
 - `POST /chat/stream` - Streaming chat response (Server-Sent Events)
 - `POST /chat` - Non-streaming chat response
 - `GET /health` - Health check
@@ -47,6 +55,7 @@ The API will be available at `http://localhost:8000`
 #### Testing Map Updates with curl
 
 **1. Test Agent with Area Recommendations:**
+
 ```bash
 # Test streaming chat with area request
 curl -X POST "http://localhost:8000/chat/stream" \
@@ -59,18 +68,25 @@ curl -X POST "http://localhost:8000/chat/stream" \
   -d '{"message": "Show me Shoreditch on the map"}'
 
 # Test non-streaming chat
+curl -X POST "http://localhost:8000/chat/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I want a list of points of interests for this area_coordinates: [[-0.095,51.535],[-0.095,51.533],[-0.094,51.531],[-0.095,51.535]], and list of interests: [karaoke bars, boxing clubs, pizza places", "conversation_history": []}'
+
+# Non-streaming chat
 curl -X POST "http://localhost:8000/chat" \
   -H "Content-Type: application/json" \
   -d '{"message": "Show me Shoreditch on the map"}'
 ```
 
 **2. Expected Behavior:**
+
 - Agent will automatically call `get_coordinates_for_area()` for recommended areas
 - Agent will then call `update_map()` to broadcast coordinates via WebSocket
 - Debug output in server logs will show tool execution
 - WebSocket clients (if connected) will receive map updates
 
 **3. Debug Output to Look For:**
+
 ```
 [DEBUG] Found X tool calls
 [DEBUG] Executing tool: get_coordinates_for_area with input: {'area_name': 'Shoreditch'}
@@ -83,23 +99,28 @@ curl -X POST "http://localhost:8000/chat" \
 **Note:** Raw WebSocket clients like wscat cannot connect to Socket.IO servers due to the handshake protocol.
 
 **Socket.IO Client Testing:**
+
 ```bash
 # Run the test client (dependencies already in pyproject.toml)
 uv run python test_socket_client.py
 ```
 
 **Testing Flow:**
+
 1. **Terminal 1** - Start backend server:
+
    ```bash
    uv run uvicorn api:app --reload
    ```
 
 2. **Terminal 2** - Run Socket.IO client:
+
    ```bash
    uv run python test_socket_client.py
    ```
 
 3. **Terminal 3** - Trigger map updates:
+
    ```bash
    curl -X POST "http://localhost:8000/chat/stream" \
      -H "Content-Type: application/json" \
@@ -109,6 +130,7 @@ uv run python test_socket_client.py
 4. **Watch Terminal 2** for real-time map update events
 
 **Expected Output in Socket.IO Client:**
+
 ```
 🗺️  Map Update Received:
    Area: Shoreditch
@@ -122,7 +144,7 @@ uv run python test_socket_client.py
 - **Autonomous Agent**: Automatically calls tools when discussing London areas
 - **Real-time Map Updates**: WebSocket broadcasting of area coordinates to frontend
 - **Interactive Chat**: Both streaming and non-streaming endpoints
-- **Tool Integration**: 
+- **Tool Integration**:
   - `get_coordinates_for_area` - Fetches London area boundaries
   - `update_map` - Broadcasts coordinates via WebSocket
   - `clear_map` - Clears all areas from map

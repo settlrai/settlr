@@ -1,6 +1,10 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
+import { ChatMessagesState, DragOffset, Position } from "@/types/chat";
+import { streamChatMessage } from "@/utils/chatStreaming";
+import { useCallback, useEffect, useRef, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface DraggableChatProps {
   onFirstMessage?: () => void;
@@ -8,49 +12,73 @@ interface DraggableChatProps {
 
 export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
   const [isDragging, setIsDragging] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const [hasMovedToSide, setHasMovedToSide] = useState(false);
-  const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<string[]>([]);
+  const [inputValue, setInputValue] = useState("");
+  const [messages, setMessages] = useState<ChatMessagesState>([]);
+
   const chatRef = useRef<HTMLDivElement>(null);
-  const dragOffset = useRef({ x: 0, y: 0 });
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dragOffset = useRef<DragOffset>({ x: 0, y: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!chatRef.current) return;
-    
+
     setIsDragging(true);
     const rect = chatRef.current.getBoundingClientRect();
     dragOffset.current = {
       x: e.clientX - rect.left,
-      y: e.clientY - rect.top
+      y: e.clientY - rect.top,
     };
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging || !chatRef.current) return;
-    
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!chatRef.current) return;
+
     const newX = e.clientX - dragOffset.current.x;
     const newY = e.clientY - dragOffset.current.y;
-    
+
     const maxX = window.innerWidth - chatRef.current.offsetWidth;
     const maxY = window.innerHeight - chatRef.current.offsetHeight;
-    
+
     setPosition({
       x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY))
+      y: Math.max(0, Math.min(newY, maxY)),
     });
-  };
+  }, []);
 
   const handleMouseUp = () => {
     setIsDragging(false);
+  };
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const removeErrorMessages = () => {
+    setMessages((prev) => prev.filter((msg) => !msg.isError));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputValue(value);
+
+    // Remove error messages when user starts typing
+    if (value.length > 0) {
+      removeErrorMessages();
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    setMessages(prev => [...prev, inputValue]);
-    setInputValue('');
+    const userMessage = inputValue.trim();
+
+    removeErrorMessages();
+
+    setMessages((prev) => [...prev, { type: "user", content: userMessage }]);
+    setInputValue("");
 
     if (!hasMovedToSide) {
       setHasMovedToSide(true);
@@ -59,18 +87,27 @@ export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
       setPosition({ x: rightPosition, y: centerY });
       onFirstMessage?.();
     }
+
+    streamChatMessage(userMessage, setMessages);
   };
 
   useEffect(() => {
+    const hasStreamingMessage = messages.some((msg) => msg.isStreaming);
+    if (hasStreamingMessage) {
+      scrollToBottom();
+    }
+  }, [messages]);
+
+  useEffect(() => {
     if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
       return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging]);
+  }, [isDragging, handleMouseMove]);
 
   useEffect(() => {
     if (!hasMovedToSide) {
@@ -84,12 +121,12 @@ export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
     <div
       ref={chatRef}
       className={`fixed w-96 h-[500px] bg-white rounded-lg shadow-2xl border border-gray-200 z-50 cursor-move transition-all duration-700 ease-in-out ${
-        isDragging ? 'cursor-grabbing' : 'cursor-grab'
+        isDragging ? "cursor-grabbing" : "cursor-grab"
       }`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        transform: hasMovedToSide ? 'none' : 'translate(0, 0)'
+        transform: hasMovedToSide ? "none" : "translate(0, 0)",
       }}
       onMouseDown={handleMouseDown}
     >
@@ -97,19 +134,45 @@ export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
         <div className="flex-1 p-4 overflow-y-auto">
           <div className="space-y-2">
             {messages.map((message, index) => (
-              <div key={index} className="p-2 bg-gray-50 rounded text-sm">
-                {message}
+              <div
+                key={index}
+                className={`p-2 rounded text-sm ${
+                  message.type === "user"
+                    ? "bg-blue-500 text-white ml-8"
+                    : message.type === "error"
+                    ? "bg-red-100 text-red-800 border border-red-300 mr-8"
+                    : "bg-gray-50 text-gray-900 mr-8"
+                }`}
+              >
+                {message.type === "user" ? (
+                  message.content
+                ) : message.type === "error" ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-500">⚠️</span>
+                    {message.content}
+                  </div>
+                ) : (
+                  <div className="prose prose-sm max-w-none prose-headings:text-gray-900 prose-p:text-gray-900 prose-strong:text-gray-900 prose-code:text-gray-900 prose-pre:bg-gray-100">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
+                )}
+                {message.isStreaming && (
+                  <span className="animate-pulse ml-1">▋</span>
+                )}
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </div>
-        
+
         <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
           <div className="flex gap-2">
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={handleInputChange}
               placeholder="Type your message..."
               className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               onMouseDown={(e) => e.stopPropagation()}

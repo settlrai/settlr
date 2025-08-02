@@ -1,5 +1,6 @@
 "use client";
 
+import DraggableChat from "@/components/DraggableChat";
 import { Locations } from "@/constants/coords";
 import { NeutralMapStyle } from "@/constants/mapThemes";
 import { Loader } from "@googlemaps/js-api-loader";
@@ -93,7 +94,7 @@ export default function MapPage() {
         </button>
       )}
 
-      {/* <DraggableChat /> */}
+      <DraggableChat />
     </div>
   );
 }

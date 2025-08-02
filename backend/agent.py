@@ -7,6 +7,7 @@ from anthropic.types import Message
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
 from map_update_tool import update_map, clear_map, get_map_state
+from regional_interests_tool import get_regional_interests
 
 class UrbanExplorerAgent:
     def __init__(self):
@@ -80,6 +81,24 @@ class UrbanExplorerAgent:
                     "properties": {},
                     "required": []
                 }
+            },
+            {
+                "name": "get_regional_interests_for_area",
+                "description": "Get points of interest for a specific area based on user interests. Searches for venues and places within the given area boundaries.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "area_coordinates": {
+                            "type": "string",
+                            "description": "Coordinates of the London area (e.g., \"[[-0.095,51.535],[-0.095,51.533],[-0.094,51.531],[-0.095,51.535]]\")"
+                        },
+                         "interests": {
+                            "type": "string",
+                            "description": "list of interests (e.g \"[karaoke bars, boxing clubs, pizza places]\")"
+                        }
+                    },
+                    "required": ["area_coordinates", "interests"]
+                }
             }
         ]
     
@@ -89,7 +108,8 @@ class UrbanExplorerAgent:
             "get_coordinates_for_area": get_area_coordinates,
             "update_map": update_map,
             "clear_map": clear_map,
-            "get_map_state": get_map_state
+            "get_map_state": get_map_state,
+            "get_regional_interests_for_area": get_regional_interests
         }
         return tool_functions.get(tool_name)
     
