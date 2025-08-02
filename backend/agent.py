@@ -6,6 +6,7 @@ import anthropic
 from anthropic.types import Message
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
+from map_update_tool import update_map, clear_map, get_map_state
 
 class UrbanExplorerAgent:
     def __init__(self):
@@ -38,13 +39,57 @@ class UrbanExplorerAgent:
                     },
                     "required": ["area_name"]
                 }
+            },
+            {
+                "name": "update_map",
+                "description": "Update the frontend map with area coordinates via websocket. Automatically broadcasts to connected clients for real-time visualization.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {
+                        "area_name": {
+                            "type": "string",
+                            "description": "Name of the London area/neighborhood"
+                        },
+                        "coordinates": {
+                            "type": "string",
+                            "description": "Coordinate array as string in format '[[lng,lat],[lng,lat],...]'"
+                        },
+                        "action": {
+                            "type": "string",
+                            "description": "Action type: 'add' (default), 'remove', 'clear', 'highlight'",
+                            "enum": ["add", "remove", "clear", "highlight"]
+                        }
+                    },
+                    "required": ["area_name", "coordinates"]
+                }
+            },
+            {
+                "name": "clear_map",
+                "description": "Clear all areas from the map display.",
+                "input_schema": {
+                    "type": "object",
+                    "properties": {},
+                    "required": []
+                }
+            },
+            {
+                "name": "get_map_state",
+                "description": "Get current map state information including connected clients and displayed areas.",
+                "input_schema": {
+                    "type": "object", 
+                    "properties": {},
+                    "required": []
+                }
             }
         ]
     
     def _get_tool_function(self, tool_name: str) -> Callable:
         """Get the actual function for a tool name."""
         tool_functions = {
-            "get_coordinates_for_area": get_area_coordinates
+            "get_coordinates_for_area": get_area_coordinates,
+            "update_map": update_map,
+            "clear_map": clear_map,
+            "get_map_state": get_map_state
         }
         return tool_functions.get(tool_name)
     

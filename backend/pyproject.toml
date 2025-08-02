@@ -8,5 +8,9 @@ dependencies = [
     "anthropic>=0.7.0",
     "python-dotenv>=1.0.0",
     "fastapi>=0.104.0",
-    "uvicorn>=0.24.0"
+    "uvicorn>=0.24.0",
+    "python-socketio>=5.11.0",
+    "python-engineio>=4.9.0",
+    "requests>=2.31.0",
+    "websocket-client>=1.6.0"
 ]

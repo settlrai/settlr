@@ -3,11 +3,15 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+import socketio
 from agent import UrbanExplorerAgent
+from websocket_manager import websocket_manager
 
-app = FastAPI(title="UrbanExplorer API", version="1.0.0")
+# Create FastAPI app
+fastapi_app = FastAPI(title="UrbanExplorer API", version="1.0.0")
 
-app.add_middleware(
+# Add CORS middleware
+fastapi_app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],
     allow_credentials=True,
@@ -15,13 +19,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Create Socket.IO ASGI app with FastAPI mounted (correct way per docs)
+app = socketio.ASGIApp(websocket_manager.get_socketio_server(), fastapi_app)
+
 
 class ChatRequest(BaseModel):
     message: str
     conversation_history: List[Dict[str, str]] = []
 
 
-@app.post("/chat/stream")
+@fastapi_app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     def generate():
         # Create fresh agent for each request (like OpenAI agents pattern)
@@ -40,7 +47,7 @@ async def chat_stream(request: ChatRequest):
     )
 
 
-@app.post("/chat")
+@fastapi_app.post("/chat")
 async def chat(request: ChatRequest):
     # Create fresh agent for each request (like OpenAI agents pattern)
     agent = UrbanExplorerAgent()
@@ -48,6 +55,6 @@ async def chat(request: ChatRequest):
     return {"response": response}
 
 
-@app.get("/health")
+@fastapi_app.get("/health")
 async def health():
     return {"status": "healthy"}
