@@ -134,12 +134,83 @@ class UrbanExplorerAgent:
     
     def run_stream(self, user_message: str) -> Generator[str, None, None]:
         """Run the agent with streaming output. Handles tool calling automatically."""
-        # For streaming, we need to run the full conversation first, then stream the final response
-        final_response = self.run(user_message)
+        messages = [{"role": "user", "content": user_message}]
         
-        # Stream the final response character by character
-        for char in final_response:
-            yield char
+        try:
+            while True:
+                print(f"[DEBUG] Streaming - Sending to Claude with {len(messages)} messages")
+                
+                # Check if we need to handle tools first (non-streaming)
+                response: Message = self.client.messages.create(
+                    model=self.model,
+                    max_tokens=2000,
+                    system=self.instructions,
+                    messages=messages,
+                    tools=self.tools
+                )
+                
+                # Check if we have tool calls
+                tool_calls = [block for block in response.content if block.type == "tool_use"]
+                
+                if tool_calls:
+                    print(f"[DEBUG] Streaming - Found {len(tool_calls)} tool calls, executing...")
+                    
+                    # Add assistant message with all content
+                    messages.append({"role": "assistant", "content": response.content})
+                    
+                    # Execute each tool and add results
+                    for tool_call in tool_calls:
+                        tool_name = tool_call.name
+                        tool_input = tool_call.input
+                        print(f"[DEBUG] Streaming - Executing tool: {tool_name}")
+                        
+                        tool_function = self._get_tool_function(tool_name)
+                        if tool_function:
+                            try:
+                                tool_result = tool_function(**tool_input)
+                                messages.append({
+                                    "role": "user",
+                                    "content": [{
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_call.id,
+                                        "content": str(tool_result)
+                                    }]
+                                })
+                            except Exception as e:
+                                messages.append({
+                                    "role": "user",
+                                    "content": [{
+                                        "type": "tool_result",
+                                        "tool_use_id": tool_call.id,
+                                        "content": f"Error executing tool: {str(e)}"
+                                    }]
+                                })
+                    
+                    # Continue loop to get final response
+                    continue
+                else:
+                    # No tool calls, now stream the final response properly
+                    print("[DEBUG] Streaming - No tools needed, streaming final response")
+                    
+                    from anthropic.lib.streaming import MessageStream
+                    
+                    stream: MessageStream = self.client.messages.create(
+                        model=self.model,
+                        max_tokens=2000,
+                        system=self.instructions,
+                        messages=messages,
+                        tools=self.tools,
+                        stream=True
+                    )
+                    
+                    for chunk in stream:
+                        if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
+                            yield chunk.delta.text
+                    return
+                        
+        except Exception as e:
+            print(f"[DEBUG] Streaming error: {e}")
+            yield f"Agent error: {str(e)}"
     
     def run_interactive(self):
         print("UrbanExplorer Agent is ready! Type 'exit' to quit.")
