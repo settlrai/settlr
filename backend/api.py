@@ -62,24 +62,10 @@ async def chat_stream(request: ChatRequest):
 
 @fastapi_app.get("/conversations/{conversation_id}")
 async def get_conversation_map(conversation_id: str):
-    db_manager = get_db_manager()
+    # Send all regions for this conversation via websocket
+    result = await websocket_manager.broadcast_map_update(conversation_id)
     
-    # Get regions for this conversation
-    regions = db_manager.get_conversation_regions(conversation_id)
-    
-    # Convert to dict format
-    regions_data = [region.to_dict() for region in regions]
-    
-    # Send via websocket
-    for region in regions_data:
-        if region.get('coordinates'):
-            await websocket_manager.broadcast_map_update(
-                area_name=region['region_name'],
-                coordinates=region['coordinates'],
-                action="add"
-            )
-    
-    return {"status": "sent", "conversation_id": conversation_id, "regions_count": len(regions_data)}
+    return {"status": "sent", "conversation_id": conversation_id, "regions_count": result.get('regions_count', 0)}
 
 # Initialize database on startup
 @fastapi_app.on_event("startup")

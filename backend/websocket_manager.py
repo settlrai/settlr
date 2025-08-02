@@ -3,6 +3,7 @@ from typing import Dict, List, Optional
 import json
 import logging
 import time
+from database import get_db_manager
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -63,55 +64,44 @@ class WebSocketManager:
                 'areas': self.current_map_state
             }, room=sid)
     
-    async def broadcast_map_update(self, area_name: str, coordinates: List[List[float]], action: str = "add") -> Dict:
+    async def broadcast_map_update(self, conversation_id: str) -> Dict:
         """
-        Broadcast map update to all connected clients.
+        Broadcast map update with all regions for a conversation to all connected clients.
         
         Args:
-            area_name: Name of the area/neighborhood
-            coordinates: List of [longitude, latitude] coordinate pairs
-            action: Type of action ('add', 'remove', 'clear', 'highlight')
+            conversation_id: The conversation ID to get regions for
             
         Returns:
             Dict with operation result and current state info
         """
         try:
+            # Get all regions for this conversation from database
+            db_manager = get_db_manager()
+            regions = db_manager.get_conversation_regions(conversation_id)
+            
+            # Convert regions to dict format for websocket (empty list if no regions)
+            regions_data = [region.to_dict() for region in regions] if regions else []
+            
             # Prepare update payload
             update_payload = {
-                'type': 'map_update',
-                'action': action,
-                'area_name': area_name,
-                'coordinates': coordinates,
+                'type': 'map_data',
+                'conversation_id': conversation_id,
+                'regions': regions_data,
                 'timestamp': time.time()
             }
             
-            # Update current map state based on action
-            if action == "add":
-                # Remove existing area if present, then add new
-                self.current_map_state = [area for area in self.current_map_state if area['area_name'] != area_name]
-                self.current_map_state.append({
-                    'area_name': area_name,
-                    'coordinates': coordinates,
-                    'action': action
-                })
-            elif action == "remove":
-                self.current_map_state = [area for area in self.current_map_state if area['area_name'] != area_name]
-            elif action == "clear":
-                self.current_map_state = []
-            
             # Broadcast to all connected clients
             if self.connected_clients:
-                await self.sio.emit('map_update', update_payload)
-                logger.info(f"Broadcasted map update for {area_name} to {len(self.connected_clients)} clients")
+                await self.sio.emit('map_state', update_payload)
+                logger.info(f"Broadcasted map data for conversation {conversation_id} with {len(regions_data)} regions to {len(self.connected_clients)} clients")
             else:
                 logger.warning("No connected clients to broadcast map update")
             
             return {
                 'success': True,
-                'action': action,
-                'area_name': area_name,
-                'connected_clients': len(self.connected_clients),
-                'current_areas': len(self.current_map_state)
+                'conversation_id': conversation_id,
+                'regions_count': len(regions_data),
+                'connected_clients': len(self.connected_clients)
             }
             
         except Exception as e:

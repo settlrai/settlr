@@ -41,15 +41,7 @@ def main():
                         print("-" * 50)
                     
                     elif event_name == 'map_state':
-                        print(f"📍 Map State Update:")
-                        print(f"   Type: {event_data.get('type', 'Unknown')}")
-                        areas = event_data.get('areas', [])
-                        print(f"   Areas: {len(areas)} total")
-                        if areas:
-                            for area in areas:
-                                print(f"     - {area.get('area_name', 'Unknown')}")
-                        print("-" * 50)
-                    
+                        print(event)
                     else:
                         print(f"📨 Event: {event_name}")
                         print(f"   Data: {event_data}")

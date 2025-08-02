@@ -1,9 +1,11 @@
 import os
 import anthropic
 import json
+import asyncio
 from typing import List
 from dotenv import load_dotenv
 from database import get_db_manager
+from websocket_manager import websocket_manager
 
 def get_area_coordinates(area_name: str, conversation_id: str) -> str:
     """
@@ -99,6 +101,11 @@ AREA TO MAP: [INSERT SPECIFIC AREA NAME HERE]"""
                         region_name=area_name,
                         coordinates=coordinates
                     )
+                    # Run async websocket update
+                    try:
+                        asyncio.run(websocket_manager.broadcast_map_update(conversation_id))
+                    except Exception as ws_error:
+                        print(f"Error updating websocket: {ws_error}")
             except Exception as save_error:
                 print(f"Error saving to database: {save_error}")
         
