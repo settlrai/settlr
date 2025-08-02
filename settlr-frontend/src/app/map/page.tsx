@@ -31,11 +31,22 @@ const getSinglePolygonPadding = () => ({
   left: 40,
 });
 
+const getSinglePolygonWithPanelPadding = () => ({
+  top: 40,
+  right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
+  bottom: 40,
+  left: 200, // Left panel width + padding
+});
+
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
   const [mapPolygons, setMapPolygons] = useState<PolygonWithArea[]>([]);
+  const [singlePolygonInView, setSinglePolygonInView] = useState<string | null>(
+    null
+  );
+  const [showLeftPanel, setShowLeftPanel] = useState(false);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
   const labelInstancesRef = useRef<google.maps.marker.AdvancedMarkerElement[]>(
     []
@@ -82,6 +93,44 @@ export default function MapPage() {
       off("map_update", handleMapUpdate);
     };
   }, [isConnected, on, off]);
+
+  const checkVisiblePolygons = useCallback(() => {
+    if (!mapInstanceRef.current || mapPolygons.length === 0) {
+      setSinglePolygonInView(null);
+      setShowLeftPanel(false);
+      return;
+    }
+
+    const bounds = mapInstanceRef.current.getBounds();
+    if (!bounds) return;
+
+    const visiblePolygons: string[] = [];
+
+    mapPolygons.forEach((polygonWithArea) => {
+      let hasVisiblePoint = false;
+
+      // Check if any point of the polygon is within the current viewport
+      for (const coord of polygonWithArea.coordinates) {
+        const point = new google.maps.LatLng(coord[1], coord[0]);
+        if (bounds.contains(point)) {
+          hasVisiblePoint = true;
+          break;
+        }
+      }
+
+      if (hasVisiblePoint) {
+        visiblePolygons.push(polygonWithArea.area_name);
+      }
+    });
+
+    if (visiblePolygons.length === 1) {
+      setSinglePolygonInView(visiblePolygons[0]);
+      setShowLeftPanel(true);
+    } else {
+      setSinglePolygonInView(null);
+      setShowLeftPanel(false);
+    }
+  }, [mapPolygons]);
 
   useEffect(() => {
     const initMap = async () => {
@@ -130,6 +179,9 @@ export default function MapPage() {
     if (!mapInstanceRef.current || mapPolygons.length === 0) {
       return;
     }
+    if (singlePolygonInView) {
+      return;
+    }
 
     const bounds = new google.maps.LatLngBounds();
 
@@ -145,7 +197,7 @@ export default function MapPage() {
         ? getMapPadding()
         : { top: 20, right: 20, bottom: 120, left: 20 }
     );
-  }, [mapPolygons]);
+  }, [mapPolygons, singlePolygonInView]);
 
   const fitSinglePolygonBounds = useCallback(
     (polygonCoords: google.maps.LatLngLiteral[]) => {
@@ -156,9 +208,16 @@ export default function MapPage() {
       const bounds = new google.maps.LatLngBounds();
       polygonCoords.forEach((coord) => bounds.extend(coord));
 
-      mapInstanceRef.current.fitBounds(bounds, getSinglePolygonPadding());
+      const padding = showLeftPanel
+        ? getSinglePolygonWithPanelPadding()
+        : getSinglePolygonPadding();
+
+      mapInstanceRef.current.fitBounds(bounds, padding);
+
+      // Check polygon visibility after zooming to single polygon
+      setTimeout(checkVisiblePolygons, 300);
     },
-    []
+    [showLeftPanel, checkVisiblePolygons]
   );
 
   useEffect(() => {
@@ -217,20 +276,22 @@ export default function MapPage() {
         polygonCoords.forEach((coord) => bounds.extend(coord));
         const center = bounds.getCenter();
 
-        // Create label element
-        const labelDiv = document.createElement("div");
-        labelDiv.className =
-          "bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium text-gray-800 shadow-md border border-gray-200";
-        labelDiv.textContent = polygonWithArea.area_name;
+        // Create label element only if not in single polygon view
+        if (!showLeftPanel) {
+          const labelDiv = document.createElement("div");
+          labelDiv.className =
+            "bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium text-gray-800 shadow-md border border-gray-200";
+          labelDiv.textContent = polygonWithArea.area_name;
 
-        // Create advanced marker for the label
-        const labelMarker = new AdvancedMarkerElement({
-          position: center,
-          map: mapInstanceRef.current,
-          content: labelDiv,
-        });
+          // Create advanced marker for the label
+          const labelMarker = new AdvancedMarkerElement({
+            position: center,
+            map: mapInstanceRef.current,
+            content: labelDiv,
+          });
 
-        labelInstancesRef.current.push(labelMarker);
+          labelInstancesRef.current.push(labelMarker);
+        }
       });
 
       // Auto-zoom to fit all polygons when they're added
@@ -240,10 +301,14 @@ export default function MapPage() {
     };
 
     renderPolygons();
-  }, [mapPolygons, fitPolygonBounds, fitSinglePolygonBounds]);
+  }, [mapPolygons, fitPolygonBounds, fitSinglePolygonBounds, showLeftPanel]);
 
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
+
+    // Reset left panel when going back to overview
+    setSinglePolygonInView(null);
+    setShowLeftPanel(false);
 
     // If there are polygons, fit bounds to show all polygons
     if (mapPolygons.length > 0) {
@@ -272,7 +337,15 @@ export default function MapPage() {
         </button>
       )}
 
-      <div className="absolute bottom-16 left-4 z-10">
+      {showLeftPanel && singlePolygonInView && (
+        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-lg z-10 min-w-[160px]">
+          <h3 className="text-sm font-medium text-gray-800">
+            {singlePolygonInView}
+          </h3>
+        </div>
+      )}
+
+      <div className="absolute bottom-20 left-4 z-10">
         <div
           className={`px-3 py-1 rounded-full text-xs font-medium ${
             socketStatus === "connected"
