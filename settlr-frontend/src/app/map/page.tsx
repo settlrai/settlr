@@ -72,25 +72,21 @@ export default function MapPage() {
   });
 
   useEffect(() => {
-    const handleMapUpdate: SettlrEvents["map_update"] = (data) => {
-      console.log("Received map update:", data);
-      if (data.action === "add") {
-        setMapPolygons((prev) => [
-          ...prev,
-          {
-            coordinates: data.coordinates,
-            area_name: data.area_name,
-          },
-        ]);
-      }
+    const handleMapUpdate: SettlrEvents["map_state"] = (data) => {
+      setMapPolygons(
+        data.regions.map((region) => ({
+          coordinates: region.coordinates,
+          area_name: region.region_name,
+        }))
+      );
     };
 
     if (isConnected) {
-      on("map_update", handleMapUpdate);
+      on("map_state", handleMapUpdate);
     }
 
     return () => {
-      off("map_update", handleMapUpdate);
+      off("map_state", handleMapUpdate);
     };
   }, [isConnected, on, off]);
 
@@ -343,8 +339,18 @@ export default function MapPage() {
               onClick={resetMapView}
               className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <svg
+                className="w-4 h-4 mr-2"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 19l-7-7 7-7"
+                />
               </svg>
               Back to overview
             </button>

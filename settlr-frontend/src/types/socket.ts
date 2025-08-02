@@ -23,8 +23,19 @@ type SettlrMapUpdateData = {
   timestamp: number;
   coordinates: Polygon;
 };
+type SettlrMapStateData = {
+  conversation_id: string;
+  regions: {
+    conversation_id: string;
+    id: number;
+    coordinates: Polygon;
+    region_name: string;
+    created_at: string;
+  }[];
+};
 export type SettlrEvents = {
   map_update: (data: SettlrMapUpdateData) => void;
+  map_state: (data: SettlrMapStateData) => void;
 };
 
 export interface SocketHookReturn {
