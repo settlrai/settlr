@@ -35,7 +35,7 @@ const getSinglePolygonWithPanelPadding = () => ({
   top: 40,
   right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
   bottom: 40,
-  left: 200, // Left panel width + padding
+  left: 192, // Left panel width (w-48)
 });
 
 export default function MapPage() {
@@ -208,16 +208,15 @@ export default function MapPage() {
       const bounds = new google.maps.LatLngBounds();
       polygonCoords.forEach((coord) => bounds.extend(coord));
 
-      const padding = showLeftPanel
-        ? getSinglePolygonWithPanelPadding()
-        : getSinglePolygonPadding();
+      // Always use panel padding when zooming to single polygon since panel will appear
+      const padding = getSinglePolygonWithPanelPadding();
 
       mapInstanceRef.current.fitBounds(bounds, padding);
 
       // Check polygon visibility after zooming to single polygon
       setTimeout(checkVisiblePolygons, 300);
     },
-    [showLeftPanel, checkVisiblePolygons]
+    [checkVisiblePolygons]
   );
 
   useEffect(() => {
@@ -338,10 +337,23 @@ export default function MapPage() {
       )}
 
       {showLeftPanel && singlePolygonInView && (
-        <div className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-white border border-gray-300 rounded-lg px-4 py-3 shadow-lg z-10 min-w-[160px]">
-          <h3 className="text-sm font-medium text-gray-800">
-            {singlePolygonInView}
-          </h3>
+        <div className="absolute top-0 left-0 h-full w-48 bg-white border-r border-gray-300 shadow-lg z-10 flex flex-col">
+          <div className="p-4 border-b border-gray-200">
+            <button
+              onClick={resetMapView}
+              className="flex items-center text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to overview
+            </button>
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <h3 className="text-lg font-medium text-gray-800 px-4 text-center">
+              {singlePolygonInView}
+            </h3>
+          </div>
         </div>
       )}
 
