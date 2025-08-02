@@ -1,6 +1,6 @@
 "use client";
 
-import DraggableChat, { DraggableChatRef } from "@/components/DraggableChat";
+import ResponsiveChat from "@/components/ResponsiveChat";
 import {
   GOOGLE_MAPS_API_KEY,
   GOOGLE_MAPS_MAP_ID,
@@ -16,27 +16,24 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DEFAULT_CENTER = { lat: 51.5072, lng: -0.1276 };
 const DEFAULT_ZOOM = 11;
 
-const ChatSize = 400;
-
-// Map padding constants for consistent spacing around chat component
-const MAP_PADDING = {
+// Map padding constants for sidebar chat layout
+const getMapPadding = () => ({
   top: 20,
-  right: ChatSize + 20, // Chat width (384px) + margin (20px) + buffer (16px)
+  right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
   bottom: 20,
   left: 20,
-};
+});
 
-const SINGLE_POLYGON_PADDING = {
+const getSinglePolygonPadding = () => ({
   top: 40,
-  right: ChatSize + 20, // Chat width (384px) + margin (20px) + buffer (16px)
+  right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
   bottom: 40,
   left: 40,
-};
+});
 
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
-  const chatRef = useRef<DraggableChatRef>(null);
   const [showResetButton, setShowResetButton] = useState(false);
   const [mapPolygons, setMapPolygons] = useState<PolygonWithArea[]>([]);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
@@ -142,7 +139,12 @@ export default function MapPage() {
       });
     });
 
-    mapInstanceRef.current.fitBounds(bounds, MAP_PADDING);
+    mapInstanceRef.current.fitBounds(
+      bounds,
+      mapPolygons.length > 0
+        ? getMapPadding()
+        : { top: 20, right: 20, bottom: 120, left: 20 }
+    );
   }, [mapPolygons]);
 
   const fitSinglePolygonBounds = useCallback(
@@ -154,7 +156,7 @@ export default function MapPage() {
       const bounds = new google.maps.LatLngBounds();
       polygonCoords.forEach((coord) => bounds.extend(coord));
 
-      mapInstanceRef.current.fitBounds(bounds, SINGLE_POLYGON_PADDING);
+      mapInstanceRef.current.fitBounds(bounds, getSinglePolygonPadding());
     },
     []
   );
@@ -231,10 +233,8 @@ export default function MapPage() {
         labelInstancesRef.current.push(labelMarker);
       });
 
-      // Move chat to side when polygons are added
+      // Auto-zoom to fit all polygons when they're added
       if (mapPolygons.length > 0) {
-        chatRef.current?.moveToSide();
-        // Auto-zoom to fit all polygons after moving chat
         fitPolygonBounds();
       }
     };
@@ -247,7 +247,6 @@ export default function MapPage() {
 
     // If there are polygons, fit bounds to show all polygons
     if (mapPolygons.length > 0) {
-      chatRef.current?.moveToSide();
       fitPolygonBounds();
     } else {
       // Otherwise, reset to default view
@@ -258,6 +257,10 @@ export default function MapPage() {
 
   return (
     <div className="h-screen w-screen relative">
+      {/* Map blur overlay for empty state */}
+      {mapPolygons.length === 0 && (
+        <div className="absolute inset-0 bg-black/10 backdrop-blur-[1px] z-10" />
+      )}
       <div ref={mapRef} className="h-full w-full" />
 
       {showResetButton && (
@@ -288,7 +291,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <DraggableChat ref={chatRef} />
+      <ResponsiveChat hasPolygons={mapPolygons.length > 0} />
     </div>
   );
 }

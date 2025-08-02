@@ -20,7 +20,7 @@ export async function streamChatMessage(
         if (response.ok && contentType === "text/event-stream; charset=utf-8") {
           setMessages((prev) => {
             const newMessages = [
-              ...prev,
+              ...prev.filter((msg) => !msg.isStreaming),
               { type: "assistant" as const, content: "", isStreaming: true },
             ];
             assistantMessageIndex = newMessages.length - 1;
