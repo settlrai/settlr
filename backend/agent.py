@@ -31,16 +31,20 @@ class UrbanExplorerAgent:
         return [
             {
                 "name": "get_coordinates_for_area",
-                "description": "Get boundary coordinates for a London area/neighborhood. Returns coordinate array for polygon rendering on maps.",
+                "description": "Get boundary coordinates for a London area/neighborhood. Returns coordinate array for polygon rendering on maps. When using this tool, automatically save regions to database by passing conversation_id parameter.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
                         "area_name": {
                             "type": "string",
                             "description": "Name of the London area (e.g., 'Shoreditch', 'Camden', 'King's Cross')"
+                        },
+                        "conversation_id": {
+                            "type": "string",
+                            "description": "Current conversation ID to save region to database"
                         }
                     },
-                    "required": ["area_name"]
+                    "required": ["area_name", "conversation_id"]
                 }
             },
             {
@@ -120,6 +124,9 @@ class UrbanExplorerAgent:
         # Load conversation history (user message already added by API)
         messages = self.conversation_manager.get_conversation_history(conversation_id)
         
+        # Add conversation_id to system instructions
+        instructions_with_context = f"{self.instructions}\n\nCURRENT_CONVERSATION_ID: {conversation_id}"
+        
         # Variable to collect the final assistant response
         final_response = ""
         
@@ -131,7 +138,7 @@ class UrbanExplorerAgent:
                 response: Message = self.client.messages.create(
                     model=self.model,
                     max_tokens=2000,
-                    system=self.instructions,
+                    system=instructions_with_context,
                     messages=messages,
                     tools=self.tools
                 )
@@ -184,7 +191,7 @@ class UrbanExplorerAgent:
                     stream: MessageStream = self.client.messages.create(
                         model=self.model,
                         max_tokens=2000,
-                        system=self.instructions,
+                        system=instructions_with_context,
                         messages=messages,
                         tools=self.tools,
                         stream=True

@@ -1,8 +1,11 @@
 import os
 import anthropic
+import json
+from typing import List
 from dotenv import load_dotenv
+from database import get_db_manager
 
-def get_area_coordinates(area_name: str) -> str:
+def get_area_coordinates(area_name: str, conversation_id: str) -> str:
     """
     Use a small LLM to get coordinates for a London area.
     
@@ -45,8 +48,10 @@ VALIDATION CHECKS:
 - Check that major landmarks within the area fall inside the polygon
 
 OUTPUT FORMAT:
-Return ONLY the coordinate array with no additional text:
-[[-0.0781, 51.5265], [-0.0745, 51.5285], [-0.0725, 51.5245], [-0.0781, 51.5265]]
+Return ONLY a valid JSON object with coordinates array. NO comments, NO additional text, NO explanations:
+{"coordinates": [[-0.0781, 51.5265], [-0.0745, 51.5285], [-0.0725, 51.5245], [-0.0781, 51.5265]]}
+
+CRITICAL: Your response must be valid JSON. Do not include any comments (// or /* */) or explanations.
 
 AREA TO MAP: [INSERT SPECIFIC AREA NAME HERE]"""
 
@@ -62,12 +67,42 @@ AREA TO MAP: [INSERT SPECIFIC AREA NAME HERE]"""
                 },
                 {
                     "role": "assistant",
-                    "content": "["  # Prefill to start coordinate array
+                    "content": "{"  # Prefill to start JSON object
                 }
             ]
         )
         
-        return "[" + response.content[0].text.strip()
+        coordinates_json = "{" + response.content[0].text.strip()
+
+        # If conversation_id provided, save to database
+        if conversation_id:
+            try:
+                print("MAX COORDINATES")
+                print(coordinates_json)
+                
+                # Clean JSON by removing comments
+                import re
+                # Remove // comments
+                coordinates_json = re.sub(r'//.*', '', coordinates_json)
+                # Remove /* */ comments
+                coordinates_json = re.sub(r'/\*.*?\*/', '', coordinates_json, flags=re.DOTALL)
+                # Remove extra whitespace
+                coordinates_json = re.sub(r'\s+', ' ', coordinates_json).strip()
+                
+                coordinates_data = json.loads(coordinates_json)
+                coordinates = coordinates_data.get("coordinates", [])
+                
+                if coordinates:
+                    db_manager = get_db_manager()
+                    db_manager.add_conversation_region(
+                        conversation_id=conversation_id,
+                        region_name=area_name,
+                        coordinates=coordinates
+                    )
+            except Exception as save_error:
+                print(f"Error saving to database: {save_error}")
+        
+        return coordinates_json
             
     except Exception as e:
         return f"Error: {e}"
