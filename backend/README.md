@@ -50,7 +50,7 @@ The API will be available at `http://localhost:8000`
 - `POST /chat/stream` - Streaming chat response (Server-Sent Events)
 - `POST /chat` - Non-streaming chat response
 - `GET /health` - Health check
-- `WebSocket /socket.io/` - Socket.IO for real-time map updates
+- `WebSocket /map/socket.io/` - Socket.IO for real-time map updates
 
 #### Testing Map Updates with curl
 

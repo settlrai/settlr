@@ -19,8 +19,8 @@ fastapi_app.add_middleware(
     allow_headers=["*"],
 )
 
-# Create Socket.IO ASGI app with FastAPI mounted (correct way per docs)
-app = socketio.ASGIApp(websocket_manager.get_socketio_server(), fastapi_app)
+# Create Socket.IO ASGI app with FastAPI mounted on /map path
+app = socketio.ASGIApp(websocket_manager.get_socketio_server(), fastapi_app, socketio_path='/map')
 
 
 class ChatRequest(BaseModel):

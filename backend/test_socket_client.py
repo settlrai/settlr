@@ -19,8 +19,8 @@ def main():
     sio = socketio.SimpleClient()
 
     try:
-        print("🔌 Connecting to Socket.IO server at http://localhost:8000...")
-        sio.connect('http://localhost:8000')
+        print("🔌 Connecting to Socket.IO server at http://localhost:8000/map...")
+        sio.connect('http://localhost:8000', socketio_path='/map')
         print("✅ Connected successfully!")
         print("👂 Listening for map updates... (Press Ctrl+C to quit)")
         print("-" * 50)
