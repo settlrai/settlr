@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
 from map_update_tool import update_map, clear_map, get_map_state
 from regional_interests_tool import get_regional_interests
+from conversation_manager import get_conversation_manager
 
 class UrbanExplorerAgent:
     def __init__(self):
@@ -19,6 +20,7 @@ class UrbanExplorerAgent:
         self.instructions = self._load_instructions()
         self.tools = self._define_tools()
         self.model = "claude-sonnet-4-20250514"  # Claude 4.0
+        self.conversation_manager = get_conversation_manager()
         
     def _load_instructions(self) -> str:
         prompt_path = Path(__file__).parent.parent / "system-prompt.md"
@@ -113,93 +115,13 @@ class UrbanExplorerAgent:
         }
         return tool_functions.get(tool_name)
     
-    def run(self, user_message: str) -> str:
-        """Run the agent with a user message. Handles tool calling automatically."""
-        messages = [{"role": "user", "content": user_message}]
+    def run_stream(self, user_message: str, conversation_id: str) -> Generator[str, None, None]:
+        """Run the agent with streaming output and conversation ID. Handles tool calling automatically."""
+        # Load conversation history (user message already added by API)
+        messages = self.conversation_manager.get_conversation_history(conversation_id)
         
-        try:
-            while True:
-                print(f"[DEBUG] Sending to Claude with {len(messages)} messages")
-                
-                # Get response from Claude
-                response: Message = self.client.messages.create(
-                    model=self.model,
-                    max_tokens=2000,
-                    system=self.instructions,
-                    messages=messages,
-                    tools=self.tools
-                )
-                
-                print(f"[DEBUG] Got response with {len(response.content)} content blocks")
-                
-                # Check if we have tool calls
-                tool_calls = [block for block in response.content if block.type == "tool_use"]
-                text_blocks = [block for block in response.content if block.type == "text"]
-                
-                if tool_calls:
-                    print(f"[DEBUG] Found {len(tool_calls)} tool calls")
-                    
-                    # Add assistant message with all content
-                    messages.append({"role": "assistant", "content": response.content})
-                    
-                    # Execute each tool and add results
-                    for tool_call in tool_calls:
-                        tool_name = tool_call.name
-                        tool_input = tool_call.input
-                        print(f"[DEBUG] Executing tool: {tool_name} with input: {tool_input}")
-                        
-                        tool_function = self._get_tool_function(tool_name)
-                        if tool_function:
-                            try:
-                                tool_result = tool_function(**tool_input)
-                                print(f"[DEBUG] Tool result: {tool_result[:100]}...")
-                                
-                                # Add tool result
-                                messages.append({
-                                    "role": "user",
-                                    "content": [{
-                                        "type": "tool_result",
-                                        "tool_use_id": tool_call.id,
-                                        "content": str(tool_result)
-                                    }]
-                                })
-                            except Exception as e:
-                                print(f"[DEBUG] Tool execution error: {e}")
-                                messages.append({
-                                    "role": "user",
-                                    "content": [{
-                                        "type": "tool_result",
-                                        "tool_use_id": tool_call.id,
-                                        "content": f"Error executing tool: {str(e)}"
-                                    }]
-                                })
-                        else:
-                            print(f"[DEBUG] Tool not found: {tool_name}")
-                            messages.append({
-                                "role": "user",
-                                "content": [{
-                                    "type": "tool_result",
-                                    "tool_use_id": tool_call.id,
-                                    "content": f"Error: Tool {tool_name} not found"
-                                }]
-                            })
-                    
-                    # Continue loop to get final response
-                    continue
-                else:
-                    # No tool calls, return the text response
-                    if text_blocks:
-                        return text_blocks[0].text
-                    else:
-                        return "No text response generated"
-                        
-        except Exception as e:
-            print(f"[DEBUG] Agent error: {e}")
-            return f"Agent error: {str(e)}"
-    
-    def run_stream(self, user_message: str) -> Generator[str, None, None]:
-        """Run the agent with streaming output. Handles tool calling automatically."""
-        messages = [{"role": "user", "content": user_message}]
+        # Variable to collect the final assistant response
+        final_response = ""
         
         try:
             while True:
@@ -270,32 +192,16 @@ class UrbanExplorerAgent:
                     
                     for chunk in stream:
                         if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
+                            final_response += chunk.delta.text
                             yield chunk.delta.text
+                    
+                    # Save the final assistant response to conversation
+                    if final_response:
+                        self.conversation_manager.add_assistant_message(conversation_id, final_response)
+                    
                     return
                         
         except Exception as e:
             print(f"[DEBUG] Streaming error: {e}")
             yield f"Agent error: {str(e)}"
     
-    def run_interactive(self):
-        print("UrbanExplorer Agent is ready! Type 'exit' to quit.")
-        
-        while True:
-            try:
-                user_input = input("\nYou: ").strip()
-                
-                if user_input.lower() in ['exit', 'quit']:
-                    break
-                
-                if not user_input:
-                    continue
-                
-                response = self.run(user_input)
-                print(f"\nUrbanExplorer: {response}")
-                
-            except KeyboardInterrupt:
-                break
-            except Exception as e:
-                print(f"Error: {e}")
-        
-        print("\nGoodbye!")
