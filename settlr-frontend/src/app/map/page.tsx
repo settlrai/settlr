@@ -1,11 +1,13 @@
 "use client";
 
 import DraggableChat from "@/components/DraggableChat";
+import { SOCKET_PATH, SOCKET_URL } from "@/constants/api";
 import { Locations } from "@/constants/coords";
 import { NeutralMapStyle } from "@/constants/mapThemes";
+import { useSocket } from "@/hooks/useSocket";
+import { SettlrEvents } from "@/types/socket";
 import { Loader } from "@googlemaps/js-api-loader";
 import { useEffect, useRef, useState } from "react";
-// import DraggableChat from "@/components/DraggableChat";
 
 const DEFAULT_CENTER = { lat: 51.5072, lng: -0.1276 };
 const DEFAULT_ZOOM = 11;
@@ -14,6 +16,39 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
+
+  const {
+    status: socketStatus,
+    on,
+    off,
+    isConnected,
+  } = useSocket({
+    url: SOCKET_URL,
+    path: SOCKET_PATH,
+    onConnect: () => {
+      console.log("Socket.IO connected to map endpoint");
+    },
+    onDisconnect: (reason) => {
+      console.log("Socket.IO disconnected:", reason);
+    },
+    onError: (error) => {
+      console.error("Socket.IO error:", error);
+    },
+  });
+
+  useEffect(() => {
+    const handleMapUpdate: SettlrEvents["map_update"] = (data) => {
+      console.log("Received map update:", data);
+    };
+
+    if (isConnected) {
+      on("map_update", handleMapUpdate);
+    }
+
+    return () => {
+      off("map_update", handleMapUpdate);
+    };
+  }, [isConnected, on, off]);
 
   useEffect(() => {
     const initMap = async () => {
@@ -93,6 +128,25 @@ export default function MapPage() {
           Reset View
         </button>
       )}
+
+      <div className="absolute top-4 left-4 z-10">
+        <div
+          className={`px-3 py-1 rounded-full text-xs font-medium ${
+            socketStatus === "connected"
+              ? "bg-green-100 text-green-800 border border-green-300"
+              : socketStatus === "connecting"
+              ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+              : socketStatus === "error"
+              ? "bg-red-100 text-red-800 border border-red-300"
+              : "bg-gray-100 text-gray-800 border border-gray-300"
+          }`}
+        >
+          {socketStatus === "connected" && "🟢 Connected"}
+          {socketStatus === "connecting" && "🟡 Connecting..."}
+          {socketStatus === "error" && "🔴 Error"}
+          {socketStatus === "disconnected" && "⚫ Disconnected"}
+        </div>
+      </div>
 
       <DraggableChat />
     </div>

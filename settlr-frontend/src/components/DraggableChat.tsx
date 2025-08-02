@@ -2,7 +2,7 @@
 
 import { ChatMessagesState, DragOffset, Position } from "@/types/chat";
 import { streamChatMessage } from "@/utils/chatStreaming";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -10,7 +10,7 @@ interface DraggableChatProps {
   onFirstMessage?: () => void;
 }
 
-export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
+function DraggableChat({ onFirstMessage }: DraggableChatProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const [hasMovedToSide, setHasMovedToSide] = useState(false);
@@ -190,3 +190,5 @@ export default function DraggableChat({ onFirstMessage }: DraggableChatProps) {
     </div>
   );
 }
+
+export default memo(DraggableChat);
