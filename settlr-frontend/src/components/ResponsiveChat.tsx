@@ -2,6 +2,7 @@
 
 import { ChatMessagesState } from "@/types/chat";
 import { streamChatMessage } from "@/utils/chatStreaming";
+import { getOrCreateSessionId } from "@/utils/sessionUtils";
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -14,6 +15,7 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessagesState>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [sessionId, setSessionId] = useState<string>("");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -48,11 +50,21 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
     setInputValue("");
 
     try {
-      await streamChatMessage(userMessage, setMessages);
+      await streamChatMessage(
+        {
+          message: userMessage,
+          conversation_id: sessionId,
+        },
+        setMessages
+      );
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    setSessionId(getOrCreateSessionId());
+  }, []);
 
   useEffect(() => {
     const hasStreamingMessage = messages.some((msg) => msg.isStreaming);
