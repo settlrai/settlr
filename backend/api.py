@@ -21,9 +21,6 @@ class ChatRequest(BaseModel):
     conversation_history: List[Dict[str, str]] = []
 
 
-agent = UrbanExplorer()
-
-
 @app.post("/chat/stream")
 async def chat_stream(request: ChatRequest):
     def generate():
