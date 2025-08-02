@@ -7,7 +7,6 @@ import {
   SOCKET_PATH,
   SOCKET_URL,
 } from "@/constants/api";
-import { NeutralMapStyle } from "@/constants/mapThemes";
 import { useSocket } from "@/hooks/useSocket";
 import { PolygonWithArea } from "@/types/map";
 import { SettlrEvents } from "@/types/socket";
@@ -84,7 +83,6 @@ export default function MapPage() {
           center: DEFAULT_CENTER,
           zoom: DEFAULT_ZOOM,
           mapId: GOOGLE_MAPS_MAP_ID,
-          styles: NeutralMapStyle,
           disableDefaultUI: true,
           gestureHandling: "greedy",
           backgroundColor: "#f5f5f5",
