@@ -17,12 +17,39 @@ Simple AI agent implementation using Anthropic's API to provide London neighborh
 
 ## Usage
 
+### CLI Mode
 Run the interactive agent:
 ```bash
-python main.py
+uv run python main.py
 ```
 
 Type 'exit' or press Ctrl+C to quit.
+
+### API Mode
+Start the FastAPI server:
+```bash
+uv run uvicorn api:app --reload
+```
+
+The API will be available at `http://localhost:8000`
+
+#### Endpoints
+- `POST /chat/stream` - Streaming chat response (Server-Sent Events)
+- `POST /chat` - Non-streaming chat response
+- `GET /health` - Health check
+
+#### Example Usage
+```bash
+# Streaming chat
+curl -X POST "http://localhost:8000/chat/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I want a trendy area in London", "conversation_history": []}'
+
+# Non-streaming chat
+curl -X POST "http://localhost:8000/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "I want a trendy area in London", "conversation_history": []}'
+```
 
 ## Features
 

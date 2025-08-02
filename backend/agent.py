@@ -1,6 +1,9 @@
 import os
 from pathlib import Path
+from typing import Generator
 import anthropic
+from anthropic.types import Message
+from anthropic.lib.streaming import MessageStream
 from dotenv import load_dotenv
 
 class UrbanExplorer:
@@ -16,13 +19,10 @@ class UrbanExplorer:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             return f.read()
     
-    def chat(self, user_message, conversation_history=None):
-        if conversation_history is None:
-            conversation_history = []
-        
+    def chat(self, user_message: str, conversation_history: list = []) -> str:
         messages = conversation_history + [{"role": "user", "content": user_message}]
         
-        response = self.client.messages.create(
+        response: Message = self.client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             system=self.system_prompt,
@@ -30,6 +30,21 @@ class UrbanExplorer:
         )
         
         return response.content[0].text
+    
+    def chat_stream(self, user_message: str, conversation_history: list = []) -> Generator[str, None, None]:
+        messages = conversation_history + [{"role": "user", "content": user_message}]
+        
+        stream: MessageStream = self.client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            system=self.system_prompt,
+            messages=messages,
+            stream=True
+        )
+        
+        for chunk in stream:
+            if chunk.type == "content_block_delta" and chunk.delta.type == "text_delta":
+                yield chunk.delta.text
     
     def run_interactive(self):
         conversation_history = []
