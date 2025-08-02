@@ -2,15 +2,30 @@
 
 import { ChatMessagesState, DragOffset, Position } from "@/types/chat";
 import { streamChatMessage } from "@/utils/chatStreaming";
-import { memo, useCallback, useEffect, useRef, useState } from "react";
+import {
+  forwardRef,
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-interface DraggableChatProps {
+type DraggableChatProps = {
   onFirstMessage?: () => void;
+};
+
+export interface DraggableChatRef {
+  moveToSide: () => void;
 }
 
-function DraggableChat({ onFirstMessage }: DraggableChatProps) {
+function DraggableChat(
+  _: DraggableChatProps,
+  ref: React.Ref<DraggableChatRef>
+) {
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState<Position>({ x: 0, y: 0 });
   const [hasMovedToSide, setHasMovedToSide] = useState(false);
@@ -20,6 +35,23 @@ function DraggableChat({ onFirstMessage }: DraggableChatProps) {
   const chatRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dragOffset = useRef<DragOffset>({ x: 0, y: 0 });
+
+  const moveToSide = useCallback(() => {
+    if (!hasMovedToSide) {
+      setHasMovedToSide(true);
+      const rightPosition = window.innerWidth - 400 - 20;
+      const centerY = (window.innerHeight - 500) / 2;
+      setPosition({ x: rightPosition, y: centerY });
+    }
+  }, [hasMovedToSide]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      moveToSide,
+    }),
+    [moveToSide]
+  );
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!chatRef.current) return;
@@ -79,14 +111,6 @@ function DraggableChat({ onFirstMessage }: DraggableChatProps) {
 
     setMessages((prev) => [...prev, { type: "user", content: userMessage }]);
     setInputValue("");
-
-    if (!hasMovedToSide) {
-      setHasMovedToSide(true);
-      const rightPosition = window.innerWidth - 400 - 20;
-      const centerY = (window.innerHeight - 500) / 2;
-      setPosition({ x: rightPosition, y: centerY });
-      onFirstMessage?.();
-    }
 
     streamChatMessage(userMessage, setMessages);
   };
@@ -191,4 +215,4 @@ function DraggableChat({ onFirstMessage }: DraggableChatProps) {
   );
 }
 
-export default memo(DraggableChat);
+export default memo(forwardRef(DraggableChat));

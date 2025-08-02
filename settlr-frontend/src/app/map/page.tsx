@@ -1,6 +1,6 @@
 "use client";
 
-import DraggableChat from "@/components/DraggableChat";
+import DraggableChat, { DraggableChatRef } from "@/components/DraggableChat";
 import { SOCKET_PATH, SOCKET_URL } from "@/constants/api";
 import { NeutralMapStyle } from "@/constants/mapThemes";
 import { useSocket } from "@/hooks/useSocket";
@@ -15,6 +15,7 @@ const DEFAULT_ZOOM = 11;
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
+  const chatRef = useRef<DraggableChatRef>(null);
   const [showResetButton, setShowResetButton] = useState(false);
   const [mapPolygons, setMapPolygons] = useState<Polygon[]>([]);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
@@ -99,6 +100,29 @@ export default function MapPage() {
     initMap();
   }, []);
 
+  const fitPolygonBounds = () => {
+    if (!mapInstanceRef.current || mapPolygons.length === 0) {
+      return;
+    }
+
+    const bounds = new google.maps.LatLngBounds();
+
+    mapPolygons.forEach((polygonData) => {
+      polygonData.forEach((coord) => {
+        bounds.extend({ lat: coord[1], lng: coord[0] });
+      });
+    });
+
+    const padding = {
+      top: 20,
+      right: 420, // Chat width (384px) + margin (20px) + buffer (16px)
+      bottom: 20,
+      left: 20,
+    };
+
+    mapInstanceRef.current.fitBounds(bounds, padding);
+  };
+
   useEffect(() => {
     const renderPolygons = async () => {
       if (!mapInstanceRef.current) {
@@ -138,13 +162,27 @@ export default function MapPage() {
 
         polygonInstancesRef.current.push(polygonInstance);
       });
+
+      // Move chat to side when polygons are added
+      if (mapPolygons.length > 0) {
+        chatRef.current?.moveToSide();
+        // Auto-zoom to fit all polygons after moving chat
+        fitPolygonBounds();
+      }
     };
 
     renderPolygons();
   }, [mapPolygons]);
 
   const resetMapView = () => {
-    if (mapInstanceRef.current) {
+    if (!mapInstanceRef.current) return;
+
+    // If there are polygons, fit bounds to show all polygons
+    if (mapPolygons.length > 0) {
+      chatRef.current?.moveToSide();
+      fitPolygonBounds();
+    } else {
+      // Otherwise, reset to default view
       mapInstanceRef.current.setCenter(DEFAULT_CENTER);
       mapInstanceRef.current.setZoom(DEFAULT_ZOOM);
     }
@@ -182,7 +220,7 @@ export default function MapPage() {
         </div>
       </div>
 
-      <DraggableChat />
+      <DraggableChat ref={chatRef} />
     </div>
   );
 }
