@@ -38,10 +38,19 @@ export default function AnimatedInput({
     }
   }, [value, isCompact]);
 
+  const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      onSubmit(e as unknown as React.FormEvent);
+    }
+  };
+
   if (isCompact) {
     return (
       <form onSubmit={onSubmit} className="p-4 border-t border-gray-200">
-        <div className="search-animated-border rounded-md">
+        <div
+          className={`${isCompact ? "" : "search-animated-border"} rounded-md`}
+        >
           <div className="search-inner">
             <div className="relative bg-white/90 backdrop-blur-sm rounded-md">
               <input
@@ -70,6 +79,7 @@ export default function AnimatedInput({
         <div className="search-inner">
           <div className="relative bg-white/90 backdrop-blur-sm rounded-lg flex">
             <textarea
+              onKeyDown={onKeyDown}
               value={value}
               onChange={onChange}
               placeholder={placeholder}
