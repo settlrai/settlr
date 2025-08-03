@@ -16,13 +16,6 @@ export interface SocketHookOptions {
   autoConnect?: boolean;
 }
 
-type SettlrMapUpdateData = {
-  type: "map_update";
-  action: "add";
-  area_name: string;
-  timestamp: number;
-  coordinates: Polygon;
-};
 type SettlrMapStateData = {
   conversation_id: string;
   regions: {
@@ -34,7 +27,6 @@ type SettlrMapStateData = {
   }[];
 };
 export type SettlrEvents = {
-  map_update: (data: SettlrMapUpdateData) => void;
   map_state: (data: SettlrMapStateData) => void;
 };
 

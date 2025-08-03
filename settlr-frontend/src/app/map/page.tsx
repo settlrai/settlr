@@ -55,7 +55,7 @@ export default function MapPage() {
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
   const [mapPolygons, setMapPolygons] = useState<PolygonWithArea[]>([]);
-  const [singlePolygonInView, setSinglePolygonInView] = useState<string | null>(
+  const [singlePolygonInView, setSinglePolygonInView] = useState<number | null>(
     null
   );
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
@@ -88,18 +88,18 @@ export default function MapPage() {
   useEffect(() => {
     const handleMapUpdate: SettlrEvents["map_state"] = (data) => {
       const polygonsWithColors = data.regions.map((region) => {
-        const areaName = region.region_name;
-
+        const regionName = region.region_name;
         // Get existing color or generate new one
-        let color = polygonColorsRef.current.get(areaName);
+        let color = polygonColorsRef.current.get(regionName);
         if (!color) {
           color = generateRandomColor();
-          polygonColorsRef.current.set(areaName, color);
+          polygonColorsRef.current.set(regionName, color);
         }
 
         return {
+          id: region.id,
           coordinates: region.coordinates,
-          area_name: areaName,
+          region_name: regionName,
           color: color,
         };
       });
@@ -234,7 +234,7 @@ export default function MapPage() {
           lng: coord[0],
         }));
 
-        const isSelected = singlePolygonInView === polygonWithArea.area_name;
+        const isSelected = singlePolygonInView === polygonWithArea.id;
 
         const polygonInstance = new Polygon({
           paths: polygonCoords,
@@ -248,7 +248,7 @@ export default function MapPage() {
 
         // Add click event listener to select and zoom to this polygon
         polygonInstance.addListener("click", () => {
-          setSinglePolygonInView(polygonWithArea.area_name);
+          setSinglePolygonInView(polygonWithArea.id);
           fitSinglePolygonBounds(polygonCoords);
         });
 
@@ -264,7 +264,7 @@ export default function MapPage() {
           const labelDiv = document.createElement("div");
           labelDiv.className =
             "bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium text-gray-800 shadow-md border border-gray-200";
-          labelDiv.textContent = polygonWithArea.area_name;
+          labelDiv.textContent = polygonWithArea.region_name;
 
           // Create advanced marker for the label
           const labelMarker = new AdvancedMarkerElement({
@@ -306,6 +306,8 @@ export default function MapPage() {
       mapInstanceRef.current.setZoom(DEFAULT_ZOOM);
     }
   };
+
+  const selectedPolygon = mapPolygons.find((p) => p.id === singlePolygonInView);
 
   return (
     <div className="h-screen w-screen relative">
@@ -355,7 +357,7 @@ export default function MapPage() {
           </div>
           <div className="flex-1 flex items-center justify-center">
             <h3 className="text-lg font-medium text-gray-800 px-4 text-center">
-              {singlePolygonInView}
+              {selectedPolygon?.region_name}
             </h3>
           </div>
         </div>

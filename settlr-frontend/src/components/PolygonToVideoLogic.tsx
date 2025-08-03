@@ -16,12 +16,12 @@ export default function PolygonToVideoLogic({
     <VideoOverlay
       isVisible={
         singlePolygonInView !== null &&
-        mapPolygons.find((p) => p.area_name === singlePolygonInView) !==
+        mapPolygons.find((p) => p.region_name === singlePolygonInView) !==
           undefined
       }
       polygonCoords={
         mapPolygons
-          .find((p) => p.area_name === singlePolygonInView)
+          .find((p) => p.region_name === singlePolygonInView)
           ?.coordinates.map((c) => ({
             lat: c[1],
             lng: c[0],

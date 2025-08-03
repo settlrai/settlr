@@ -2,6 +2,7 @@ export type Polygon = [number, number][];
 
 export interface PolygonWithArea {
   coordinates: Polygon;
-  area_name: string;
+  region_name: string;
   color: string;
+  id: number;
 }
