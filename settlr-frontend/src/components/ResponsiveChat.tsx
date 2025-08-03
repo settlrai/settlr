@@ -6,6 +6,7 @@ import { streamChatMessage } from "@/utils/chatStreaming";
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import AnimatedInput from "./AnimatedInput";
 
 type ResponsiveChatProps = {
   hasPolygons?: boolean;
@@ -19,7 +20,6 @@ function ResponsiveChat({
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessagesState>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isMultiline, setIsMultiline] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -75,17 +75,6 @@ function ResponsiveChat({
     }
   }, [messages]);
 
-  // Reset textarea height when input is empty
-  useEffect(() => {
-    if (inputValue === "") {
-      const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
-      if (textarea) {
-        textarea.style.height = "40px";
-      }
-      setIsMultiline(false);
-    }
-  }, [inputValue]);
-
   // Check if there are any completed assistant messages
   const hasAssistantMessages = messages.some(
     (msg) =>
@@ -99,71 +88,16 @@ function ResponsiveChat({
   if (!hasPolygons && !hasAssistantMessages) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
-        <form onSubmit={handleSubmit} className="w-4/5 max-w-[1550px]">
-          <div className="search-animated-border rounded-lg">
-            <div className="search-inner">
-              <div className="relative bg-white/90 backdrop-blur-sm rounded-lg">
-                <textarea
-                  value={inputValue}
-                  onChange={handleInputChange}
-                  placeholder="Ask me about London neighborhoods and lifestyle preferences..."
-                  className="w-full px-4 pr-20 bg-transparent border-none rounded-lg focus:outline-none focus:ring-0 disabled:opacity-50 text-base placeholder-gray-500 resize-none overflow-hidden max-h-[200px]"
-                  disabled={isLoading}
-                  rows={1}
-                  style={{
-                    height: "40px",
-                    lineHeight: "24px",
-                    paddingTop: "11px",
-                    paddingBottom: "8px",
-                  }}
-                  onInput={(e) => {
-                    const target = e.target as HTMLTextAreaElement;
-                    target.style.height = "40px";
-                    const newHeight = Math.max(
-                      40,
-                      Math.min(target.scrollHeight, 200)
-                    );
-                    target.style.height = newHeight + "px";
-                    setIsMultiline(newHeight > 40);
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !inputValue.trim()}
-                  className={`absolute right-2 px-4 py-2 text-gray-600 rounded-md focus:outline-none font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all duration-200 hover:text-gray-800 hover:border hover:border-gray-400 hover:cursor-pointer enabled:cursor-pointer ${
-                    isMultiline
-                      ? "bottom-2"
-                      : "top-1/2 transform -translate-y-1/2"
-                  }`}
-                >
-                  {isLoading ? (
-                    <>
-                      <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                          fill="none"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span className="sr-only">Sending...</span>
-                    </>
-                  ) : (
-                    "Send"
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
+        <AnimatedInput
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Ask me about London neighborhoods and lifestyle preferences..."
+          disabled={isLoading}
+          isLoading={isLoading}
+          inputValue={inputValue}
+          onSubmit={handleSubmit}
+          isCompact={false}
+        />
       </div>
     );
   }
@@ -216,67 +150,16 @@ function ResponsiveChat({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              placeholder="Type your message..."
-              className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:opacity-50"
-              style={
-                {
-                  borderColor: theme.semantic.input.border,
-                  "--tw-ring-color": theme.semantic.input.borderFocus,
-                } as React.CSSProperties
-              }
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !inputValue.trim()}
-              className="px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[80px] justify-center"
-              style={
-                {
-                  backgroundColor: theme.semantic.button.primary.background,
-                  "--tw-ring-color": theme.semantic.button.primary.background,
-                } as React.CSSProperties
-              }
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.backgroundHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.background;
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span className="sr-only">Sending...</span>
-                </>
-              ) : (
-                "Send"
-              )}
-            </button>
-          </div>
-        </form>
+        <AnimatedInput
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Type your message..."
+          disabled={isLoading}
+          isLoading={isLoading}
+          inputValue={inputValue}
+          onSubmit={handleSubmit}
+          isCompact={true}
+        />
       </div>
     </div>
   );
