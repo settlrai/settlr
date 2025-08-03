@@ -5,6 +5,7 @@ import asyncio
 from typing import List
 from dotenv import load_dotenv
 from database import RegionBorder, get_db_manager
+from sqlalchemy import func
 from websocket_manager import websocket_manager
 
 
@@ -26,7 +27,7 @@ International")
         with db_manager.get_session() as session:
             # Query the region_borders table for the area
             region_border = session.query(RegionBorder).filter(
-                RegionBorder.region_name.lower().ilike(f"%{area_name.lower()}%")
+                func.lower(RegionBorder.region_name).ilike(f"%{area_name.lower()}%")
             ).first()
             
             if not region_border:
