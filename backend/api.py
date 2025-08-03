@@ -72,7 +72,7 @@ async def get_conversation_map(conversation_id: str):
 async def get_region_map(conversation_id: str, region_id: int):
     # Create agent and trigger POI population for this region
     agent = UrbanExplorerAgent()
-    
+    print('inside get_region_map {conversation_id} {region_id}')
     # Run agent with region_id to automatically populate POIs
     response_text = ""
     for chunk in agent.run_stream("INTERNAL SYSTEM: Populate points of interest for this region. CALL ONLY get_regional_interests_for_area AND NOTHING ELSE", conversation_id, region_id):

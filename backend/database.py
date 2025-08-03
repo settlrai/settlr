@@ -82,6 +82,7 @@ class ConversationRegion(Base):
     __tablename__ = "conversation_regions"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
+    region_id=Column(Integer, ForeignKey("region_borders.id"), nullable=False)
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=False)
     region_name = Column(Text, nullable=False)
     coordinates = Column(Text)  # JSON blob with polygon coordinates
@@ -89,12 +90,13 @@ class ConversationRegion(Base):
     
     # Relationship to conversation
     conversation = relationship("Conversation", back_populates="regions")
-    # Relationship to region interests
-    interests = relationship("RegionInterest", back_populates="region", cascade="all, delete-orphan")
+    
+    borders = relationship("RegionBorder")
     
     def to_dict(self) -> Dict[str, Any]:
         return {
             "id": self.id,
+            "region_id": self.region_id,
             "conversation_id": self.conversation_id,
             "region_name": self.region_name,
             "coordinates": json.loads(self.coordinates) if self.coordinates else None,
@@ -105,14 +107,13 @@ class RegionInterest(Base):
     __tablename__ = "region_interests"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    region_id = Column(Integer, ForeignKey("conversation_regions.id"), nullable=False)
+    region_id = Column(Integer, ForeignKey("region_borders.id"), nullable=False)
     conversation_id = Column(String, ForeignKey("conversations.id"), nullable=False)
     interest_type = Column(Text, nullable=False)
     points_of_interest = Column(Text)  # JSON blob with POI data
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships
-    region = relationship("ConversationRegion", back_populates="interests")
     conversation = relationship("Conversation", back_populates="region_interests")
     
     def to_dict(self) -> Dict[str, Any]:
@@ -268,6 +269,7 @@ class DatabaseManager:
                 coordinates = json.loads(region_border.coordinates)
         
             region = ConversationRegion(
+                region_id=region_border.id if region_border else None,
                 conversation_id=conversation_id,
                 region_name=region_name,
                 coordinates=json.dumps(coordinates) if coordinates else None
@@ -301,7 +303,7 @@ class DatabaseManager:
     def get_region(self, region_id: int) -> Optional[ConversationRegion]:
         """Get a specific region by ID."""
         with self.get_session() as session:
-            return session.query(ConversationRegion).filter(ConversationRegion.id == region_id).first()
+            return session.query(ConversationRegion).filter(ConversationRegion.region_id == region_id).first()
     
     def _generate_title(self, first_message: str, max_length: int = 50) -> str:
         """Generate a conversation title from the first message."""

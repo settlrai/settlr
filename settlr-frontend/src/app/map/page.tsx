@@ -107,7 +107,7 @@ export default function MapPage() {
         }
 
         return {
-          id: region.id,
+          id: region.region_id,
           coordinates: region.coordinates,
           region_name: regionName,
           color: color,

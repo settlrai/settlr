@@ -77,7 +77,7 @@ CRITICAL:
     try:
         print(f"[DEBUG] Sending request to LLM with user_interests: {user_interests}")
         response = client.messages.create(
-            model="claude-3-5-haiku-20241022",
+            model="claude-3-5-sonnet-20241022",
             max_tokens=5000,
             temperature=0.1,
             system=system_prompt,

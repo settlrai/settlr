@@ -35,7 +35,7 @@ type SettlrMapStateData = {
   conversation_id: string;
   regions: {
     conversation_id: string;
-    id: number;
+    region_id: number;
     coordinates: Polygon;
     region_name: string;
     created_at: string;
