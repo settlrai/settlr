@@ -59,10 +59,10 @@ const getSinglePolygonWithPanelPadding = () => ({
 
 // Loading circle configuration
 const CIRCLE_COLORS = [
-  "rgba(107, 114, 128, 0.3)",
-  "rgba(75, 85, 99, 0.3)",
-  "rgba(156, 163, 175, 0.3)",
-  "rgba(55, 65, 81, 0.3)",
+  "rgba(107, 114, 128, 0.6)",
+  "rgba(75, 85, 99, 0.6)",
+  "rgba(156, 163, 175, 0.6)",
+  "rgba(55, 65, 81, 0.6)",
 ];
 
 // Check if a point is inside a polygon using ray casting algorithm
@@ -506,9 +506,9 @@ export default function MapPage() {
     const color =
       CIRCLE_COLORS[Math.floor(Math.random() * CIRCLE_COLORS.length)];
 
-    // Position randomly in the center area of the screen (around search field)
-    const left = 30 + Math.random() * 40 + "%"; // 30% to 70% from left
-    const top = 40 + Math.random() * 20 + "%"; // 40% to 60% from top
+    // Position randomly across the entire screen
+    const left = 10 + Math.random() * 80 + "%"; // 10% to 90% from left
+    const top = 10 + Math.random() * 80 + "%"; // 10% to 90% from top
 
     return {
       id,
@@ -538,7 +538,7 @@ export default function MapPage() {
           prev.filter((circle) => circle.id !== newCircle.id)
         );
       }, newCircle.duration * 1000 + 500); // Add 500ms buffer
-    }, 3000);
+    }, 2000);
 
     // Set timeout to stop animation after 30 seconds (fallback)
     firstResponseTimeoutRef.current = setTimeout(() => {
@@ -819,8 +819,8 @@ export default function MapPage() {
               background: `radial-gradient(circle, ${
                 circle.color
               } 0%, ${circle.color.replace(
-                "0.3",
-                "0.1"
+                "0.6",
+                "0.2"
               )} 70%, transparent 100%)`,
             }}
           />
