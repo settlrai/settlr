@@ -84,3 +84,20 @@ body {
   animation: expandAndFade linear forwards;
   pointer-events: none;
 }
+
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.blinking-emoji {
+  animation: blink 1.2s ease-in-out infinite;
+  pointer-events: none;
+}
