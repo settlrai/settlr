@@ -68,7 +68,6 @@ Return ONLY a valid JSON object with this structure. NO comments, NO additional 
 
 CRITICAL: 
 - Your response must be valid JSON
-- Do not include website or gmaps_link fields
 - Use exact category names from user interests
 - Ensure all quotes are properly closed"""
     
@@ -105,9 +104,11 @@ CRITICAL:
             print(f"[DEBUG] Raw POI JSON: {poi_json[:200]}...")
             # Clean JSON by removing comments and fixing incomplete JSON
             import re
-            clean_json = re.sub(r'//.*', '', poi_json)
-            clean_json = re.sub(r'/\*.*?\*/', '', clean_json, flags=re.DOTALL)
-            clean_json = re.sub(r'\s+', ' ', clean_json).strip()
+
+            clean_json = poi_json
+            # clean_json = re.sub(r'//.*', '', poi_json)
+            # clean_json = re.sub(r'/\*.*?\*/', '', clean_json, flags=re.DOTALL)
+            # clean_json = re.sub(r'\s+', ' ', clean_json).strip()
             
             # Try to fix incomplete JSON by adding missing closing braces/brackets
             if not clean_json.endswith('}'):

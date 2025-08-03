@@ -384,6 +384,9 @@ export default function MapPage() {
       </div>
       <div class="text-xs text-gray-600 mb-1">${poi.address}</div>
       ${tagsHtml}
+      <a href="https://www.google.com/maps/search/${encodeURIComponent(poi.name)}" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded transition-colors mt-2">
+        View on Google Maps
+      </a>
     `;
 
     // Container for marker and popup
