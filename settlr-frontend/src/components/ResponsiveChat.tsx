@@ -6,6 +6,7 @@ import { streamChatMessage } from "@/utils/chatStreaming";
 import { memo, useEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import AnimatedInput from "./AnimatedInput";
 
 type ResponsiveChatProps = {
   hasPolygons?: boolean;
@@ -30,7 +31,9 @@ function ResponsiveChat({
     setMessages((prev) => prev.filter((msg) => !msg.isError));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
     const value = e.target.value;
     setInputValue(value);
 
@@ -81,71 +84,20 @@ function ResponsiveChat({
       msg.content.trim()
   );
 
-  // Empty state: full-width bottom input
+  // Empty state: centered search bar with animated border
   if (!hasPolygons && !hasAssistantMessages) {
     return (
-      <div className="fixed bottom-0 left-0 right-0 z-50 p-6">
-        <form onSubmit={handleSubmit} className="w-full">
-          <div className="flex gap-3 max-w-4xl mx-auto">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              placeholder="Ask me about London neighborhoods and lifestyle preferences..."
-              className="flex-1 px-4 py-3 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg focus:outline-none focus:ring-2 disabled:opacity-50 text-base"
-              style={
-                {
-                  "--tw-ring-color": theme.semantic.input.borderFocus,
-                  borderColor: theme.semantic.input.border,
-                } as React.CSSProperties
-              }
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !inputValue.trim()}
-              className="px-6 py-3 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-              style={
-                {
-                  backgroundColor: theme.semantic.button.primary.background,
-                  "--tw-ring-color": theme.semantic.button.primary.background,
-                } as React.CSSProperties
-              }
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.backgroundHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.background;
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Sending...
-                </>
-              ) : (
-                "Send"
-              )}
-            </button>
-          </div>
-        </form>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+        <AnimatedInput
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Ask me about London neighborhoods and lifestyle preferences..."
+          disabled={isLoading}
+          isLoading={isLoading}
+          inputValue={inputValue}
+          onSubmit={handleSubmit}
+          isCompact={false}
+        />
       </div>
     );
   }
@@ -198,67 +150,16 @@ function ResponsiveChat({
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
-          <div className="flex gap-2">
-            <input
-              type="text"
-              value={inputValue}
-              onChange={handleInputChange}
-              placeholder="Type your message..."
-              className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:opacity-50"
-              style={
-                {
-                  borderColor: theme.semantic.input.border,
-                  "--tw-ring-color": theme.semantic.input.borderFocus,
-                } as React.CSSProperties
-              }
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              disabled={isLoading || !inputValue.trim()}
-              className="px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[80px] justify-center"
-              style={
-                {
-                  backgroundColor: theme.semantic.button.primary.background,
-                  "--tw-ring-color": theme.semantic.button.primary.background,
-                } as React.CSSProperties
-              }
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.backgroundHover;
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme.semantic.button.primary.background;
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                      fill="none"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  <span className="sr-only">Sending...</span>
-                </>
-              ) : (
-                "Send"
-              )}
-            </button>
-          </div>
-        </form>
+        <AnimatedInput
+          value={inputValue}
+          onChange={handleInputChange}
+          placeholder="Type your message..."
+          disabled={isLoading}
+          isLoading={isLoading}
+          inputValue={inputValue}
+          onSubmit={handleSubmit}
+          isCompact={true}
+        />
       </div>
     </div>
   );
