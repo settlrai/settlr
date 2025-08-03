@@ -79,8 +79,22 @@ class WebSocketManager:
             db_manager = get_db_manager()
             regions = db_manager.get_conversation_regions(conversation_id)
             
-            # Convert regions to dict format for websocket (empty list if no regions)
-            regions_data = [region.to_dict() for region in regions] if regions else []
+            # Convert regions to dict format and include points of interest
+            regions_data = []
+            if regions:
+                for region in regions:
+                    region_dict = region.to_dict()
+                    
+                    # Get points of interest for this region
+                    region_interests = db_manager.get_region_interests(region.id)
+                    
+                    # Add POIs to region data
+                    region_dict['points_of_interest'] = []
+                    for interest in region_interests:
+                        interest_dict = interest.to_dict()
+                        region_dict['points_of_interest'].append(interest_dict)
+                    
+                    regions_data.append(region_dict)
             
             # Prepare update payload
             update_payload = {

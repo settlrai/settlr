@@ -1,12 +1,10 @@
 import os
-import json
 from pathlib import Path
-from typing import Generator, List, Dict, Any, Callable
+from typing import Generator, List, Dict, Any, Callable, Optional
 import anthropic
 from anthropic.types import Message
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
-from map_update_tool import update_map
 from regional_interests_tool import get_regional_interests
 from conversation_manager import get_conversation_manager
 
@@ -18,7 +16,6 @@ class UrbanExplorerAgent:
         )
         self.name = "UrbanExplorer"
         self.instructions = self._load_instructions()
-        self.tools = self._define_tools()
         self.model = "claude-sonnet-4-20250514"  # Claude 4.0
         self.conversation_manager = get_conversation_manager()
         
@@ -27,7 +24,35 @@ class UrbanExplorerAgent:
         with open(prompt_path, 'r', encoding='utf-8') as f:
             return f.read()
     
-    def _define_tools(self) -> List[Dict[str, Any]]:
+    def _define_tools(self, region_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        # If region_id is specified, only provide the regional interests tool
+        if region_id is not None:
+            return [
+                {
+                    "name": "get_regional_interests_for_area",
+                    "description": "Get points of interest for a specific region based on user interests. Fetches region coordinates from database and searches for venues within that region. Automatically saves POIs to database.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "conversation_id": {
+                                "type": "string",
+                                "description": "Current conversation ID to link POIs to"
+                            },
+                            "region_id": {
+                                "type": "integer",
+                                "description": "The region ID to get coordinates for and save POIs to"
+                            },
+                            "user_interests": {
+                                "type": "string",
+                                "description": "List of user interests (e.g \"[karaoke bars, boxing clubs, pizza places]\")"
+                            }
+                        },
+                        "required": ["conversation_id", "region_id", "user_interests"]
+                    }
+                }
+            ]
+        
+        # Default: provide both tools
         return [
             {
                 "name": "get_coordinates_for_area",
@@ -49,20 +74,24 @@ class UrbanExplorerAgent:
             },
             {
                 "name": "get_regional_interests_for_area",
-                "description": "Get points of interest for a specific area based on user interests. Searches for venues and places within the given area boundaries.",
+                "description": "Get points of interest for a specific region based on user interests. Fetches region coordinates from database and searches for venues within that region. Automatically saves POIs to database.",
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "area_coordinates": {
+                        "conversation_id": {
                             "type": "string",
-                            "description": "Coordinates of the London area (e.g., \"[[-0.095,51.535],[-0.095,51.533],[-0.094,51.531],[-0.095,51.535]]\")"
+                            "description": "Current conversation ID to link POIs to"
                         },
-                         "interests": {
+                        "region_id": {
+                            "type": "integer",
+                            "description": "The region ID to get coordinates for and save POIs to"
+                        },
+                        "user_interests": {
                             "type": "string",
-                            "description": "list of interests (e.g \"[karaoke bars, boxing clubs, pizza places]\")"
+                            "description": "List of user interests (e.g \"[karaoke bars, boxing clubs, pizza places]\")"
                         }
                     },
-                    "required": ["area_coordinates", "interests"]
+                    "required": ["conversation_id", "region_id", "user_interests"]
                 }
             }
         ]
@@ -75,13 +104,21 @@ class UrbanExplorerAgent:
         }
         return tool_functions.get(tool_name)
     
-    def run_stream(self, user_message: str, conversation_id: str) -> Generator[str, None, None]:
+    def run_stream(self, user_message: str, conversation_id: str, region_id: Optional[int] = None) -> Generator[str, None, None]:
         """Run the agent with streaming output and conversation ID. Handles tool calling automatically."""
         # Load conversation history (user message already added by API)
         messages = self.conversation_manager.get_conversation_history(conversation_id)
         
-        # Add conversation_id to system instructions
-        instructions_with_context = f"{self.instructions}\n\nCURRENT_CONVERSATION_ID: {conversation_id}"
+        # Add conversation_id and region_id to system instructions
+        context_info = f"CURRENT_CONVERSATION_ID: {conversation_id}"
+        if region_id is not None:
+            print("INSIDE REGION ID WHICH IS NOT NONE")
+            context_info += f"\nCURRENT_REGION_ID: {region_id}"
+            context_info += f"\n\nMANDATORY TASK: You MUST call the get_regional_interests_for_area tool with conversation_id='{conversation_id}', region_id={region_id}, and user_interests extracted from the conversation. This is required and not optional. Do this immediately. DO NOT call get_coordinates_for_area - only call get_regional_interests_for_area."
+        instructions_with_context = f"{self.instructions}\n\n{context_info}"
+        
+        # Get tools based on whether region_id is provided
+        tools = self._define_tools(region_id)
         
         # Variable to collect the final assistant response
         final_response = ""
@@ -96,7 +133,7 @@ class UrbanExplorerAgent:
                     max_tokens=2000,
                     system=instructions_with_context,
                     messages=messages,
-                    tools=self.tools
+                    tools=tools
                 )
                 
                 # Check if we have tool calls
@@ -149,7 +186,7 @@ class UrbanExplorerAgent:
                         max_tokens=2000,
                         system=instructions_with_context,
                         messages=messages,
-                        tools=self.tools,
+                        tools=tools,
                         stream=True
                     )
                     

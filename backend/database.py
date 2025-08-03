@@ -255,6 +255,32 @@ class DatabaseManager:
             session.refresh(region)
             return region
     
+    def get_region_interests(self, region_id: int) -> List[RegionInterest]:
+        """Get all points of interest for a specific region."""
+        with self.get_session() as session:
+            return session.query(RegionInterest).filter(
+                RegionInterest.region_id == region_id
+            ).all()
+    
+    def add_region_interest(self, region_id: int, conversation_id: str, interest_type: str, points_of_interest: List[Dict[str, Any]]) -> RegionInterest:
+        """Add points of interest for a region and conversation."""
+        with self.get_session() as session:
+            region_interest = RegionInterest(
+                region_id=region_id,
+                conversation_id=conversation_id,
+                interest_type=interest_type,
+                points_of_interest=json.dumps(points_of_interest)
+            )
+            session.add(region_interest)
+            session.commit()
+            session.refresh(region_interest)
+            return region_interest
+    
+    def get_region(self, region_id: int) -> Optional[ConversationRegion]:
+        """Get a specific region by ID."""
+        with self.get_session() as session:
+            return session.query(ConversationRegion).filter(ConversationRegion.id == region_id).first()
+    
     def _generate_title(self, first_message: str, max_length: int = 50) -> str:
         """Generate a conversation title from the first message."""
         # Clean and truncate the message

@@ -28,6 +28,7 @@ app = socketio.ASGIApp(websocket_manager.get_socketio_server(), fastapi_app, soc
 class ChatRequest(BaseModel):
     message: str
     conversation_id: str  # Always required - client generates UUID
+    region_id: Optional[int] = None  # Optional region ID for POI requests
 
 
 @fastapi_app.post("/chat/stream")
@@ -47,7 +48,7 @@ async def chat_stream(request: ChatRequest):
     def generate():
         # Create fresh agent for each request
         agent = UrbanExplorerAgent()
-        for chunk in agent.run_stream(request.message, request.conversation_id):
+        for chunk in agent.run_stream(request.message, request.conversation_id, request.region_id):
             yield f"data: {chunk}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -66,6 +67,21 @@ async def get_conversation_map(conversation_id: str):
     result = await websocket_manager.broadcast_map_update(conversation_id)
     
     return {"status": "sent", "conversation_id": conversation_id, "regions_count": result.get('regions_count', 0)}
+
+@fastapi_app.get("/conversations/{conversation_id}/regions/{region_id}")
+async def get_region_map(conversation_id: str, region_id: int):
+    # Create agent and trigger POI population for this region
+    agent = UrbanExplorerAgent()
+    
+    # Run agent with region_id to automatically populate POIs
+    response_text = ""
+    for chunk in agent.run_stream("INTERNAL SYSTEM: Populate points of interest for this region. CALL ONLY get_regional_interests_for_area AND NOTHING ELSE", conversation_id, region_id):
+        response_text += chunk
+    
+    # Send all regions for this conversation via websocket
+    result = await websocket_manager.broadcast_map_update(conversation_id)
+    
+    return {"status": "sent", "conversation_id": conversation_id, "region_id": region_id, "regions_count": result.get('regions_count', 0)}
 
 # Initialize database on startup
 @fastapi_app.on_event("startup")
