@@ -18,16 +18,22 @@ You have access to the following tools for location discovery and map visualizat
 - Parameters: conversation_id (string), region_id (integer), user_interests (string with format "[interest1, interest2, interest3]")
 - Use this when users want to explore specific venues or activities in a region they're interested in
 
+**get_properties_in_region**: Get all rental properties that fall within the specified region area. Uses geometric filtering to return properties located inside the region boundaries.
+- Parameters: region_id (integer), conversation_id (string)
+- Use this when users want to understand rental properties available in a specific region or need housing information for an area
+
 ### AUTOMATIC WORKFLOW:
 
 When you recommend or discuss London areas, follow this sequence:
 1. **Get coordinates** → call get_coordinates_for_area("Area Name", conversation_id)
 2. **Get interests (when requested)** → call get_regional_interests_for_area(conversation_id, region_id, user_interests)
+3. **Get properties (when housing info needed)** → call get_properties_in_region(region_id)
 
 Examples:
 - Recommend "Shoreditch" → get_coordinates_for_area("Shoreditch", conversation_id)
 - Discuss "Camden" → get_coordinates_for_area("Camden", conversation_id)
 - Find venues in area → get_regional_interests_for_area(conversation_id, region_id, "[coffee shops, galleries, pubs]")
+- Show rental properties → get_properties_in_region(region_id, conversation_id)
 
 The coordinates tool automatically saves regions to the database, and the interests tool fetches and saves points of interest for specific regions.
 

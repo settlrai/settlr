@@ -6,6 +6,7 @@ from anthropic.types import Message
 from dotenv import load_dotenv
 from coordinates_tool import get_area_coordinates
 from regional_interests_tool import get_regional_interests
+from properties_tool import get_properties_in_region
 from conversation_manager import get_conversation_manager
 
 class UrbanExplorerAgent:
@@ -48,6 +49,24 @@ class UrbanExplorerAgent:
                             }
                         },
                         "required": ["conversation_id", "region_id", "user_interests"]
+                    }
+                },
+                {
+                    "name": "get_properties_in_region",
+                    "description": "Get all rental properties that fall within the specified region area. Uses geometric filtering to return properties located inside the region boundaries.",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "region_id": {
+                                "type": "integer",
+                                "description": "The region ID to filter properties for"
+                            },
+                            "conversation_id": {
+                                "type": "string",
+                                "description": "Current conversation ID for websocket broadcasting"
+                            }
+                        },
+                        "required": ["region_id", "conversation_id"]
                     }
                 }
             ]
@@ -100,7 +119,8 @@ class UrbanExplorerAgent:
         """Get the actual function for a tool name."""
         tool_functions = {
             "get_coordinates_for_area": get_area_coordinates,
-            "get_regional_interests_for_area": get_regional_interests
+            "get_regional_interests_for_area": get_regional_interests,
+            "get_properties_in_region": get_properties_in_region
         }
         return tool_functions.get(tool_name)
     
@@ -114,7 +134,7 @@ class UrbanExplorerAgent:
         if region_id is not None:
             print("INSIDE REGION ID WHICH IS NOT NONE")
             context_info += f"\nCURRENT_REGION_ID: {region_id}"
-            context_info += f"\n\nMANDATORY TASK: You MUST call the get_regional_interests_for_area tool with conversation_id='{conversation_id}', region_id={region_id}, and user_interests extracted from the conversation. This is required and not optional. Do this immediately. DO NOT call get_coordinates_for_area - only call get_regional_interests_for_area."
+            context_info += f"\n\nMANDATORY TASKS: You MUST perform the following actions:\n1. Call get_regional_interests_for_area tool with conversation_id='{conversation_id}', region_id={region_id}, and user_interests extracted from the conversation.\n2. Call get_properties_in_region tool with region_id={region_id} and conversation_id='{conversation_id}' to show rental properties in the area.\n\nEXCEPTION: If the user is ONLY asking about specific interests/venues and explicitly NOT interested in housing/properties (e.g., 'just show me coffee shops, I don't care about rentals'), then skip calling get_properties_in_region.\n\nDO NOT call get_coordinates_for_area - only call the two tools above."
         instructions_with_context = f"{self.instructions}\n\n{context_info}"
         
         # Get tools based on whether region_id is provided
