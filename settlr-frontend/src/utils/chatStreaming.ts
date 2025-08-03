@@ -19,8 +19,7 @@ export async function streamChatMessage(
       headers: {
         "Content-Type": "application/json",
       },
-      // Disable all retries
-      openWhenHidden: false,
+      openWhenHidden: true,
       async onopen(response) {
         const contentType = response.headers.get("content-type");
         if (response.ok && contentType === "text/event-stream; charset=utf-8") {
@@ -73,7 +72,6 @@ export async function streamChatMessage(
         }
       },
       onerror: (err) => {
-        console.error("Error in event source:", err);
         if (assistantMessageIndex !== -1) {
           setMessages((prev) => {
             const newMessages = [...prev];
