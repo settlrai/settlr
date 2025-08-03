@@ -261,6 +261,12 @@ class DatabaseManager:
     def add_conversation_region(self, conversation_id: str, region_name: str, coordinates: Optional[List] = None) -> ConversationRegion:
         """Add a region to a conversation."""
         with self.get_session() as session:
+            region_border = session.query(RegionBorder).filter(
+                RegionBorder.region_name == region_name
+            ).first()
+            if region_border and region_border.coordinates:
+                coordinates = json.loads(region_border.coordinates)
+        
             region = ConversationRegion(
                 conversation_id=conversation_id,
                 region_name=region_name,

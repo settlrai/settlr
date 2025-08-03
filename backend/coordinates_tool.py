@@ -4,8 +4,70 @@ import json
 import asyncio
 from typing import List
 from dotenv import load_dotenv
-from database import get_db_manager
+from database import RegionBorder, get_db_manager
 from websocket_manager import websocket_manager
+
+
+def get_area_quick(area_name: str, conversation_id: str) -> str:
+    """
+    Get area coordinates quickly from the region_borders table.
+    
+    Args:
+        area_name: Name of the London area (e.g., "Shoreditch", "Stratford 
+International")
+        conversation_id: Optional conversation ID to save the region to
+    
+    Returns:
+        Dictionary with coordinates and region info, or None if not found
+    """
+    try:
+        db_manager = get_db_manager()
+        
+        with db_manager.get_session() as session:
+            # Query the region_borders table for the area
+            region_border = session.query(RegionBorder).filter(
+                RegionBorder.region_name.lower().ilike(f"%{area_name.lower()}%")
+            ).first()
+            
+            if not region_border:
+                return None
+            
+            # Parse coordinates from the stored JSON
+            coordinates = None
+            if region_border.coordinates:
+                try:
+                    coordinates = json.loads(region_border.coordinates)
+                except json.JSONDecodeError:
+                    coordinates = region_border.coordinates
+            
+            # If conversation_id provided, save to conversation_regions
+            if conversation_id and coordinates:
+                try:
+                    db_manager.add_conversation_region(
+                        conversation_id=conversation_id,
+                        region_name=region_border.region_name,
+                        coordinates=coordinates
+                    )
+                    
+                    # Update websocket
+                    try:                    
+                        asyncio.run(websocket_manager.broadcast_map_update(conversation_id))
+                    except Exception as ws_error:
+                        print(f"Error updating websocket: {ws_error}")
+                        
+                except Exception as save_error:
+                    print(f"Error saving to database: {save_error}")
+            
+            return {
+                "region_name": region_border.region_name,
+                "borough_name": region_border.borough_name,
+                "coordinates": coordinates
+            }
+            
+    except Exception as e:
+        print(f"Error in get_area_quick: {e}")
+        return None            
+       
 
 def get_area_coordinates(area_name: str, conversation_id: str) -> str:
     """
@@ -17,6 +79,12 @@ def get_area_coordinates(area_name: str, conversation_id: str) -> str:
     Returns:
         Raw agent output with coordinates
     """
+    quick_response = get_area_quick(area_name, conversation_id)
+
+    if quick_response:
+        print(f"got quick response for {area_name} {conversation_id}")
+        return quick_response
+
     load_dotenv()
     
     client = anthropic.Anthropic(
