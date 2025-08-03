@@ -10,6 +10,8 @@ import {
 import { useSocket } from "@/hooks/useSocket";
 import { PolygonWithArea } from "@/types/map";
 import { SettlrEvents } from "@/types/socket";
+import { triggerGlobalFetch, triggerRegionFetch } from "@/utils/regionApi";
+import { getOrCreateSessionId } from "@/utils/sessionUtils";
 import { Loader } from "@googlemaps/js-api-loader";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -58,10 +60,14 @@ export default function MapPage() {
   const [singlePolygonInView, setSinglePolygonInView] = useState<number | null>(
     null
   );
+  const [isLoadingRegionDetails, setIsLoadingRegionDetails] = useState(false);
+  const [regionFetchError, setRegionFetchError] = useState<string | null>(null);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
   const labelInstancesRef = useRef<google.maps.marker.AdvancedMarkerElement[]>(
     []
   );
+
+  const [sessionId] = useState<string>(getOrCreateSessionId);
 
   // Store color mappings for polygons by area_name
   const polygonColorsRef = useRef<Map<string, string>>(new Map());
@@ -105,6 +111,9 @@ export default function MapPage() {
       });
 
       setMapPolygons(polygonsWithColors);
+      // Clear loading/error states when new data arrives
+      setIsLoadingRegionDetails(false);
+      setRegionFetchError(null);
     };
 
     if (isConnected) {
@@ -247,9 +256,24 @@ export default function MapPage() {
         });
 
         // Add click event listener to select and zoom to this polygon
-        polygonInstance.addListener("click", () => {
+        polygonInstance.addListener("click", async () => {
           setSinglePolygonInView(polygonWithArea.id);
           fitSinglePolygonBounds(polygonCoords);
+
+          // Trigger API call to fetch region details
+          setIsLoadingRegionDetails(true);
+          setRegionFetchError(null);
+
+          try {
+            await triggerRegionFetch(sessionId, polygonWithArea.id);
+          } catch (error) {
+            setRegionFetchError(
+              error instanceof Error
+                ? error.message
+                : "Failed to fetch region details"
+            );
+            setIsLoadingRegionDetails(false);
+          }
         });
 
         polygonInstancesRef.current.push(polygonInstance);
@@ -289,6 +313,7 @@ export default function MapPage() {
     fitPolygonBounds,
     fitSinglePolygonBounds,
     singlePolygonInView,
+    sessionId,
   ]);
 
   const resetMapView = () => {
@@ -296,6 +321,7 @@ export default function MapPage() {
 
     // Reset selection when going back to overview
     setSinglePolygonInView(null);
+    triggerGlobalFetch(sessionId);
 
     // If there are polygons, fit bounds to show all polygons
     if (mapPolygons.length > 0) {
@@ -355,10 +381,40 @@ export default function MapPage() {
               Back to overview
             </button>
           </div>
-          <div className="flex-1 flex items-center justify-center">
-            <h3 className="text-lg font-medium text-gray-800 px-4 text-center">
-              {selectedPolygon?.region_name}
-            </h3>
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-center w-full">
+              <h3 className="text-lg font-medium text-gray-800 mb-2">
+                {selectedPolygon?.region_name}
+              </h3>
+
+              {isLoadingRegionDetails && (
+                <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                  <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      fill="none"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  Loading details...
+                </div>
+              )}
+
+              {regionFetchError && (
+                <div className="text-sm text-red-600 bg-red-50 p-2 rounded border border-red-200">
+                  {regionFetchError}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -382,7 +438,10 @@ export default function MapPage() {
         </div>
       </div>
 
-      <ResponsiveChat hasPolygons={mapPolygons.length > 0} />
+      <ResponsiveChat
+        hasPolygons={mapPolygons.length > 0}
+        sessionId={sessionId}
+      />
     </div>
   );
 }
