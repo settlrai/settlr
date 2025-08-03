@@ -159,10 +159,13 @@ export default function MapPage() {
   >([]);
   const loadingCircleIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const firstResponseTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   // Region loading animation state
-  const [isShowingRegionLoadingEmojis, setIsShowingRegionLoadingEmojis] = useState(false);
-  const regionLoadingMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const [isShowingRegionLoadingEmojis, setIsShowingRegionLoadingEmojis] =
+    useState(false);
+  const regionLoadingMarkersRef = useRef<
+    google.maps.marker.AdvancedMarkerElement[]
+  >([]);
   const regionLoadingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const regionLoadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -350,7 +353,7 @@ export default function MapPage() {
     // Create popup element
     const popupDiv = document.createElement("div");
     popupDiv.className =
-      "absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-64 max-w-80 opacity-0 pointer-events-none transition-opacity duration-200";
+      "absolute bottom-full mb-0.5 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-64 max-w-80 opacity-0 pointer-events-none transition-opacity duration-200";
     popupDiv.style.zIndex = "9999";
 
     // Generate star rating HTML
@@ -396,7 +399,9 @@ export default function MapPage() {
       </div>
       <div class="text-xs text-gray-600 mb-1">${poi.address}</div>
       ${tagsHtml}
-      <a href="https://www.google.com/maps/search/${encodeURIComponent(poi.name)}" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded transition-colors mt-2">
+      <a href="https://www.google.com/maps/search/${encodeURIComponent(
+        poi.name
+      )}" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded transition-colors mt-2">
         View on Google Maps
       </a>
     `;
@@ -527,7 +532,8 @@ export default function MapPage() {
     const { AdvancedMarkerElement } = await loader.importLibrary("marker");
 
     const markerDiv = document.createElement("div");
-    markerDiv.className = "blinking-emoji w-6 h-6 flex items-center justify-center text-lg";
+    markerDiv.className =
+      "blinking-emoji w-6 h-6 flex items-center justify-center text-lg";
     markerDiv.innerHTML = emoji;
     markerDiv.style.fontSize = "20px";
 
@@ -622,29 +628,35 @@ export default function MapPage() {
   // Region loading animation functions
   const startRegionLoadingAnimation = (polygonCoords: [number, number][]) => {
     if (isShowingRegionLoadingEmojis || !mapInstanceRef.current) return;
-    
+
     console.log("Starting region loading animation with blinking emojis");
     setIsShowingRegionLoadingEmojis(true);
-    
+
     let emojiCount = 0;
     const maxEmojis = 5;
-    
+
     const spawnEmoji = async () => {
       if (!regionLoadingIntervalRef.current || emojiCount >= maxEmojis) return;
-      
+
       const randomPosition = generateRandomPointInPolygon(polygonCoords);
-      const randomEmoji = REGION_LOADING_EMOJIS[Math.floor(Math.random() * REGION_LOADING_EMOJIS.length)];
-      
-      const marker = await createBlinkingEmojiMarker(randomPosition, randomEmoji);
+      const randomEmoji =
+        REGION_LOADING_EMOJIS[
+          Math.floor(Math.random() * REGION_LOADING_EMOJIS.length)
+        ];
+
+      const marker = await createBlinkingEmojiMarker(
+        randomPosition,
+        randomEmoji
+      );
       if (marker) {
         regionLoadingMarkersRef.current.push(marker);
         emojiCount++;
       }
     };
-    
+
     // Spawn first emoji immediately
     spawnEmoji();
-    
+
     // Continue spawning emojis every 800ms until we have enough
     regionLoadingIntervalRef.current = setInterval(() => {
       if (emojiCount < maxEmojis) {
@@ -656,30 +668,30 @@ export default function MapPage() {
           regionLoadingIntervalRef.current = null;
         }
       }
-    }, 800);
-    
+    }, 2000);
+
     // Set timeout to stop animation after 30 seconds (fallback)
     regionLoadingTimeoutRef.current = setTimeout(() => {
       stopRegionLoadingAnimation();
-    }, 30000);
+    }, 60000);
   };
 
   const stopRegionLoadingAnimation = () => {
     console.log("Stopping region loading animation");
     setIsShowingRegionLoadingEmojis(false);
-    
+
     // Clear interval
     if (regionLoadingIntervalRef.current) {
       clearInterval(regionLoadingIntervalRef.current);
       regionLoadingIntervalRef.current = null;
     }
-    
+
     // Clear timeout
     if (regionLoadingTimeoutRef.current) {
       clearTimeout(regionLoadingTimeoutRef.current);
       regionLoadingTimeoutRef.current = null;
     }
-    
+
     // Remove all emoji markers
     regionLoadingMarkersRef.current.forEach((marker) => {
       marker.map = null;

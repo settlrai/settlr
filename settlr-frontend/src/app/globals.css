@@ -80,7 +80,12 @@ body {
 .loading-circle {
   position: absolute;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(107, 114, 128, 0.3) 0%, rgba(107, 114, 128, 0.1) 70%, transparent 100%);
+  background: radial-gradient(
+    circle,
+    rgba(107, 114, 128, 0.3) 0%,
+    rgba(107, 114, 128, 0.1) 70%,
+    transparent 100%
+  );
   animation: expandAndFade linear forwards;
   pointer-events: none;
 }
@@ -98,6 +103,6 @@ body {
 }
 
 .blinking-emoji {
-  animation: blink 1.2s ease-in-out infinite;
+  animation: blink 3s ease-in-out infinite;
   pointer-events: none;
 }
