@@ -19,6 +19,8 @@ export async function streamChatMessage(
       headers: {
         "Content-Type": "application/json",
       },
+      // Disable all retries
+      openWhenHidden: false,
       async onopen(response) {
         const contentType = response.headers.get("content-type");
         if (response.ok && contentType === "text/event-stream; charset=utf-8") {
