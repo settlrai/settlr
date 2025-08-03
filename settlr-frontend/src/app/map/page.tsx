@@ -250,8 +250,9 @@ export default function MapPage() {
 
     const markerDiv = document.createElement("div");
     markerDiv.className =
-      "rounded-full bg-blue-500 border-2 border-white shadow-lg transition-all duration-200 w-3 h-3";
+      "rounded-lg bg-yellow-100 border-2 border-white shadow-lg transition-all duration-200 w-6 h-6 flex items-center justify-center";
     markerDiv.style.cursor = "pointer";
+    markerDiv.innerHTML = poi.emoji;
     markerDiv.dataset.poiId = poiId;
 
     const marker = new AdvancedMarkerElement({
@@ -486,10 +487,10 @@ export default function MapPage() {
       const poiId = element.dataset.poiId;
       if (poiId === hoveredPOI) {
         element.className =
-          "rounded-full bg-blue-500 border-2 border-white shadow-lg transition-all duration-200 w-6 h-6";
+          "rounded-lg bg-yellow-100 border-2 border-white shadow-lg transition-all duration-200 w-6 h-6 flex items-center justify-center";
       } else {
         element.className =
-          "rounded-full bg-blue-500 border-2 border-white shadow-lg transition-all duration-200 w-3 h-3";
+          "rounded-lg bg-green-500 border-2 border-white shadow-lg transition-all duration-200 w-3 h-3 flex items-center justify-center";
       }
     });
   }, [hoveredPOI]);

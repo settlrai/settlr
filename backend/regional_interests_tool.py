@@ -60,7 +60,8 @@ Return ONLY a valid JSON object with this structure. NO comments, NO additional 
       "address": "Full address",
       "rating": 4.5,
       "review_count": 123,
-      "categories": ["cafe", "coffee"]
+      "categories": ["cafe", "coffee"],
+      "emoji": "☕",
     }}
   ]
 }}

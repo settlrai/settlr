@@ -7,13 +7,14 @@ from sqlalchemy import text
 from websocket_manager import websocket_manager
 
 
-def get_properties_in_region(region_id: int, conversation_id: str) -> List[Dict[str, Any]]:
+def get_properties_in_region(region_id: int, conversation_id: str, max_price: Optional[int] = None) -> List[Dict[str, Any]]:
     """
     Get all properties that fall within the specified region area using convex hull geometry.
     
     Args:
         region_id: ID of the region from region_borders table
         conversation_id: Current conversation ID for websocket broadcasting
+        max_price: Optional maximum price filter (in pounds per month)
         
     Returns:
         List of property dictionaries containing all fields:
@@ -56,15 +57,25 @@ def get_properties_in_region(region_id: int, conversation_id: str) -> List[Dict[
                 return []
             
             # Get all properties from properties_with_coordinates table
-            query = text("""
-                SELECT id, property_id, source, property_link, price, address,
-                       bedrooms, bathrooms, area_sqm, search_area, search_query,
-                       title, description, images, floor_plan_url, coordinates
-                FROM properties_with_coordinates
-                WHERE coordinates IS NOT NULL AND coordinates != ''
-            """)
+            if max_price is not None:
+                query = text("""
+                    SELECT id, property_id, source, property_link, price, address,
+                           bedrooms, bathrooms, area_sqm, search_area, search_query,
+                           title, description, images, floor_plan_url, coordinates
+                    FROM properties_with_coordinates
+                    WHERE coordinates IS NOT NULL AND coordinates != '' AND price <= :max_price
+                """)
+                result = session.execute(query, {"max_price": max_price})
+            else:
+                query = text("""
+                    SELECT id, property_id, source, property_link, price, address,
+                           bedrooms, bathrooms, area_sqm, search_area, search_query,
+                           title, description, images, floor_plan_url, coordinates
+                    FROM properties_with_coordinates
+                    WHERE coordinates IS NOT NULL AND coordinates != ''
+                """)
+                result = session.execute(query)
             
-            result = session.execute(query)
             properties = result.fetchall()
             
             filtered_properties = []
@@ -109,7 +120,8 @@ def get_properties_in_region(region_id: int, conversation_id: str) -> List[Dict[
                     print(f"Error processing property {property_row.id}: {e}")
                     continue
             
-            print(f"Found {len(filtered_properties)} properties in region {region_id}")
+            price_info = f" under £{max_price}/month" if max_price else ""
+            print(f"Found {len(filtered_properties)} properties in region {region_id}{price_info}")
             
             # Broadcast properties to websocket clients
             try:

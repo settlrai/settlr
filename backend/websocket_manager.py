@@ -87,8 +87,8 @@ class WebSocketManager:
                 for region in regions:
                     region_dict = region.to_dict()
                     
-                    # Get points of interest for this region
-                    region_interests = db_manager.get_region_interests(region.region_id)
+                    # Get points of interest for this region and conversation
+                    region_interests = db_manager.get_region_interests(region.region_id, conversation_id)
                     
                     # Add POIs to region data
                     region_dict['points_of_interest'] = []
