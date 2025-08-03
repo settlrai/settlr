@@ -58,7 +58,6 @@ export default function MapPage() {
   const [singlePolygonInView, setSinglePolygonInView] = useState<string | null>(
     null
   );
-  const [showLeftPanel, setShowLeftPanel] = useState(false);
   const polygonInstancesRef = useRef<google.maps.Polygon[]>([]);
   const labelInstancesRef = useRef<google.maps.marker.AdvancedMarkerElement[]>(
     []
@@ -116,44 +115,6 @@ export default function MapPage() {
       off("map_state", handleMapUpdate);
     };
   }, [isConnected, on, off]);
-
-  const checkVisiblePolygons = useCallback(() => {
-    if (!mapInstanceRef.current || mapPolygons.length === 0) {
-      setSinglePolygonInView(null);
-      setShowLeftPanel(false);
-      return;
-    }
-
-    const bounds = mapInstanceRef.current.getBounds();
-    if (!bounds) return;
-
-    const visiblePolygons: string[] = [];
-
-    mapPolygons.forEach((polygonWithArea) => {
-      let hasVisiblePoint = false;
-
-      // Check if any point of the polygon is within the current viewport
-      for (const coord of polygonWithArea.coordinates) {
-        const point = new google.maps.LatLng(coord[1], coord[0]);
-        if (bounds.contains(point)) {
-          hasVisiblePoint = true;
-          break;
-        }
-      }
-
-      if (hasVisiblePoint) {
-        visiblePolygons.push(polygonWithArea.area_name);
-      }
-    });
-
-    if (visiblePolygons.length === 1) {
-      setSinglePolygonInView(visiblePolygons[0]);
-      setShowLeftPanel(true);
-    } else {
-      setSinglePolygonInView(null);
-      setShowLeftPanel(false);
-    }
-  }, [mapPolygons]);
 
   useEffect(() => {
     const initMap = async () => {
@@ -235,11 +196,8 @@ export default function MapPage() {
       const padding = getSinglePolygonWithPanelPadding();
 
       mapInstanceRef.current.fitBounds(bounds, padding);
-
-      // Check polygon visibility after zooming to single polygon
-      setTimeout(checkVisiblePolygons, 300);
     },
-    [checkVisiblePolygons]
+    []
   );
 
   useEffect(() => {
@@ -276,18 +234,21 @@ export default function MapPage() {
           lng: coord[0],
         }));
 
+        const isSelected = singlePolygonInView === polygonWithArea.area_name;
+
         const polygonInstance = new Polygon({
           paths: polygonCoords,
           strokeColor: "#2D3748",
           strokeOpacity: 0.8,
-          strokeWeight: 2,
+          strokeWeight: isSelected ? 3 : 2,
           fillColor: polygonWithArea.color,
-          fillOpacity: 0.2,
+          fillOpacity: isSelected ? 0 : 0.2,
           map: mapInstanceRef.current,
         });
 
-        // Add click event listener to zoom to this polygon
+        // Add click event listener to select and zoom to this polygon
         polygonInstance.addListener("click", () => {
+          setSinglePolygonInView(polygonWithArea.area_name);
           fitSinglePolygonBounds(polygonCoords);
         });
 
@@ -298,8 +259,8 @@ export default function MapPage() {
         polygonCoords.forEach((coord) => bounds.extend(coord));
         const center = bounds.getCenter();
 
-        // Create label element only if not in single polygon view
-        if (!showLeftPanel) {
+        // Create label element only if no polygon is selected
+        if (singlePolygonInView === null) {
           const labelDiv = document.createElement("div");
           labelDiv.className =
             "bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-sm font-medium text-gray-800 shadow-md border border-gray-200";
@@ -323,14 +284,18 @@ export default function MapPage() {
     };
 
     renderPolygons();
-  }, [mapPolygons, fitPolygonBounds, fitSinglePolygonBounds, showLeftPanel]);
+  }, [
+    mapPolygons,
+    fitPolygonBounds,
+    fitSinglePolygonBounds,
+    singlePolygonInView,
+  ]);
 
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
 
-    // Reset left panel when going back to overview
+    // Reset selection when going back to overview
     setSinglePolygonInView(null);
-    setShowLeftPanel(false);
 
     // If there are polygons, fit bounds to show all polygons
     if (mapPolygons.length > 0) {
@@ -365,7 +330,7 @@ export default function MapPage() {
         </button>
       )}
 
-      {showLeftPanel && singlePolygonInView && (
+      {singlePolygonInView && (
         <div className="absolute top-0 left-0 h-full w-48 bg-white border-r border-gray-300 shadow-lg z-10 flex flex-col">
           <div className="p-4 border-b border-gray-200">
             <button
