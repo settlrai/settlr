@@ -1,6 +1,6 @@
-# 🏠 Settlr: AI-Powered Lifestyle Property Search
+# 🏠 VibeRent: AI-Powered Lifestyle Property Search
 
-> 🚀 **AI-powered conversational search** that enhances property platforms by adding lifestyle-based filtering on top of traditional bedroom/price filters, letting users refine results with preferences like *"vibrant area with good coffee and 20-minute commute to Bank for young professionals"*.
+> 🚀 **AI-powered conversational search** that enhances property platforms by adding lifestyle-based filtering on top of traditional bedroom/price filters, letting users refine results with preferences like _"vibrant area with good coffee and 20-minute commute to Bank for young professionals"_.
 
 ---
 
@@ -12,13 +12,14 @@ Current property search platforms like **Zoopla** and **Rightmove** rely on basi
 
 ## 💡 **Solution Overview**
 
-We built an **AI-powered conversational search layer** that enhances existing property platforms by allowing users to describe their ideal lifestyle in natural language. Instead of just filtering by *"2 bedrooms under £2000,"* users can say:
+We built an **AI-powered conversational search layer** that enhances existing property platforms by allowing users to describe their ideal lifestyle in natural language. Instead of just filtering by _"2 bedrooms under £2000,"_ users can say:
 
-> *"vibrant area with good coffee and 20-minute commute to Bank for young professionals"* ☕✨
+> _"vibrant area with good coffee and 20-minute commute to Bank for young professionals"_ ☕✨
 
 Our AI analyzes neighborhood data including:
+
 - 🚇 Transport times
-- 🏪 Amenity density  
+- 🏪 Amenity density
 - 👥 Demographics
 - 🌆 Local characteristics
 
@@ -31,15 +32,16 @@ To surface properties that truly match their **lifestyle requirements** alongsid
 🤖 **Anthropic Claude API** (Sonnet 4 and 3.5) - Powering the conversational AI agent  
 🗺️ **MapTiler Geocoding API** - Location intelligence and regional data analysis  
 🏡 **Custom Rightmove Integration** - Property listings  
-📊 **Prolific Research Platform** - User studies across UK and US markets  
+📊 **Prolific Research Platform** - User studies across UK and US markets
 
-*Proving that lifestyle-based property search is a genuine pain point users desperately want solved.* ✅
+_Proving that lifestyle-based property search is a genuine pain point users desperately want solved._ ✅
 
 ---
 
 ## 🎯 **Target Audience**
 
 **B2B2C model** targeting users of major property platforms:
+
 - 🇬🇧 **Rightmove, Zoopla**
 - 🇺🇸 **Zillow**
 
@@ -52,8 +54,9 @@ Through **exclusive partnerships** with one dominant aggregator per market. Sinc
 Scale through **sequential market expansion** starting with one exclusive UK aggregator partner, then replicate the model in major rental-stressed megapolises:
 
 🏙️ **Target Cities:**
+
 - 🗽 New York
-- 🌉 San Francisco  
+- 🌉 San Francisco
 - 🗼 Paris
 - 🚲 Amsterdam
 
