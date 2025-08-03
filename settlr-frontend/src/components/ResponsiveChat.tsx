@@ -1,5 +1,6 @@
 "use client";
 
+import { theme } from "@/constants/theme";
 import { ChatMessagesState } from "@/types/chat";
 import { streamChatMessage } from "@/utils/chatStreaming";
 import { getOrCreateSessionId } from "@/utils/sessionUtils";
@@ -68,7 +69,6 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
 
   useEffect(() => {
     const hasStreamingMessage = messages.some((msg) => msg.isStreaming);
-    console.log("messages", messages);
     if (hasStreamingMessage) {
       scrollToBottom();
     }
@@ -76,7 +76,11 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
 
   // Check if there are any completed assistant messages
   const hasAssistantMessages = messages.some(
-    (msg) => msg.type === "assistant" && !msg.isStreaming && !msg.isError && msg.content.trim()
+    (msg) =>
+      msg.type === "assistant" &&
+      !msg.isStreaming &&
+      !msg.isError &&
+      msg.content.trim()
   );
 
   // Empty state: full-width bottom input
@@ -90,13 +94,33 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
               value={inputValue}
               onChange={handleInputChange}
               placeholder="Ask me about London neighborhoods and lifestyle preferences..."
-              className="flex-1 px-4 py-3 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-white/90 backdrop-blur-sm border border-gray-300 rounded-lg shadow-lg focus:outline-none focus:ring-2 disabled:opacity-50 text-base"
+              style={
+                {
+                  "--tw-ring-color": theme.semantic.input.borderFocus,
+                  borderColor: theme.semantic.input.border,
+                } as React.CSSProperties
+              }
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={isLoading || !inputValue.trim()}
-              className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-3 text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 font-medium shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              style={
+                {
+                  backgroundColor: theme.semantic.button.primary.background,
+                  "--tw-ring-color": theme.semantic.button.primary.background,
+                } as React.CSSProperties
+              }
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme.semantic.button.primary.backgroundHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme.semantic.button.primary.background;
+              }}
             >
               {isLoading ? (
                 <>
@@ -142,11 +166,16 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
                 key={index}
                 className={`p-2 rounded text-sm ${
                   message.type === "user"
-                    ? "bg-blue-500 text-white ml-8"
+                    ? "text-white ml-8"
                     : message.type === "error"
                     ? "bg-red-100 text-red-800 border border-red-300 mr-8"
                     : "bg-gray-50 text-gray-900 mr-8"
                 }`}
+                style={
+                  message.type === "user"
+                    ? { backgroundColor: theme.semantic.chat.userMessage }
+                    : {}
+                }
               >
                 {message.type === "user" ? (
                   message.content
@@ -178,13 +207,33 @@ function ResponsiveChat({ hasPolygons = false }: ResponsiveChatProps) {
               value={inputValue}
               onChange={handleInputChange}
               placeholder="Type your message..."
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+              className="flex-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 disabled:opacity-50"
+              style={
+                {
+                  borderColor: theme.semantic.input.border,
+                  "--tw-ring-color": theme.semantic.input.borderFocus,
+                } as React.CSSProperties
+              }
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={isLoading || !inputValue.trim()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[80px] justify-center"
+              className="px-4 py-2 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 min-w-[80px] justify-center"
+              style={
+                {
+                  backgroundColor: theme.semantic.button.primary.background,
+                  "--tw-ring-color": theme.semantic.button.primary.background,
+                } as React.CSSProperties
+              }
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme.semantic.button.primary.backgroundHover;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor =
+                  theme.semantic.button.primary.background;
+              }}
             >
               {isLoading ? (
                 <>
