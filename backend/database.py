@@ -125,6 +125,22 @@ class RegionInterest(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None
         }
 
+class RegionBorder(Base):
+    __tablename__ = "region_borders"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    region_name = Column(String, nullable=False)
+    borough_name = Column(String, nullable=False)
+    coordinates = Column(Text)  # Polygon coordinates
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "region_name": self.region_name,
+            "borough_name": self.borough_name,
+            "coordinates": self.coordinates
+        }
+
 class DatabaseManager:
     """Manages database connection and operations."""
     
