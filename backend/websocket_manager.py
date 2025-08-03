@@ -65,12 +65,13 @@ class WebSocketManager:
                 'areas': self.current_map_state
             }, room=sid)
     
-    async def broadcast_map_update(self, conversation_id: str) -> Dict:
+    async def broadcast_map_update(self, conversation_id: str, properties: Optional[List[Dict]] = None) -> Dict:
         """
         Broadcast map update with all regions for a conversation to all connected clients.
         
         Args:
             conversation_id: The conversation ID to get regions for
+            properties: Optional list of property dictionaries to include in the update
             
         Returns:
             Dict with operation result and current state info
@@ -105,10 +106,15 @@ class WebSocketManager:
                 'timestamp': time.time()
             }
             
+            # Add properties if provided
+            if properties is not None:
+                update_payload['properties'] = properties
+            
             # Broadcast to all connected clients
             if self.connected_clients:
                 await self.sio.emit('map_state', update_payload)
-                logger.info(f"Broadcasted map data for conversation {conversation_id} with {len(regions_data)} regions to {len(self.connected_clients)} clients")
+                properties_info = f" and {len(properties)} properties" if properties else ""
+                logger.info(f"Broadcasted map data for conversation {conversation_id} with {len(regions_data)} regions{properties_info} to {len(self.connected_clients)} clients")
             else:
                 logger.warning("No connected clients to broadcast map update")
             
@@ -116,6 +122,7 @@ class WebSocketManager:
                 'success': True,
                 'conversation_id': conversation_id,
                 'regions_count': len(regions_data),
+                'properties_count': len(properties) if properties else 0,
                 'connected_clients': len(self.connected_clients)
             }
             
