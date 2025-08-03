@@ -19,6 +19,7 @@ function ResponsiveChat({
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessagesState>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isMultiline, setIsMultiline] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,7 +31,9 @@ function ResponsiveChat({
     setMessages((prev) => prev.filter((msg) => !msg.isError));
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>
+  ) => {
     const value = e.target.value;
     setInputValue(value);
 
@@ -72,6 +75,17 @@ function ResponsiveChat({
     }
   }, [messages]);
 
+  // Reset textarea height when input is empty
+  useEffect(() => {
+    if (inputValue === "") {
+      const textarea = document.querySelector('textarea') as HTMLTextAreaElement;
+      if (textarea) {
+        textarea.style.height = "40px";
+      }
+      setIsMultiline(false);
+    }
+  }, [inputValue]);
+
   // Check if there are any completed assistant messages
   const hasAssistantMessages = messages.some(
     (msg) =>
@@ -89,18 +103,38 @@ function ResponsiveChat({
           <div className="search-animated-border rounded-lg">
             <div className="search-inner">
               <div className="relative bg-white/90 backdrop-blur-sm rounded-lg">
-                <input
-                  type="text"
+                <textarea
                   value={inputValue}
                   onChange={handleInputChange}
                   placeholder="Ask me about London neighborhoods and lifestyle preferences..."
-                  className="w-full px-4 py-3 pr-20 bg-transparent border-none rounded-lg focus:outline-none focus:ring-0 disabled:opacity-50 text-base placeholder-gray-500"
+                  className="w-full px-4 pr-20 bg-transparent border-none rounded-lg focus:outline-none focus:ring-0 disabled:opacity-50 text-base placeholder-gray-500 resize-none overflow-hidden max-h-[200px]"
                   disabled={isLoading}
+                  rows={1}
+                  style={{
+                    height: "40px",
+                    lineHeight: "24px",
+                    paddingTop: "11px",
+                    paddingBottom: "8px",
+                  }}
+                  onInput={(e) => {
+                    const target = e.target as HTMLTextAreaElement;
+                    target.style.height = "40px";
+                    const newHeight = Math.max(
+                      40,
+                      Math.min(target.scrollHeight, 200)
+                    );
+                    target.style.height = newHeight + "px";
+                    setIsMultiline(newHeight > 40);
+                  }}
                 />
                 <button
                   type="submit"
                   disabled={isLoading || !inputValue.trim()}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 px-4 py-2 text-gray-600 rounded-md focus:outline-none font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors hover:text-gray-800"
+                  className={`absolute right-2 px-4 py-2 text-gray-600 rounded-md focus:outline-none font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-all duration-200 hover:text-gray-800 hover:border hover:border-gray-400 hover:cursor-pointer enabled:cursor-pointer ${
+                    isMultiline
+                      ? "bottom-2"
+                      : "top-1/2 transform -translate-y-1/2"
+                  }`}
                 >
                   {isLoading ? (
                     <>
