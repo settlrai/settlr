@@ -279,11 +279,12 @@ class DatabaseManager:
             session.refresh(region)
             return region
     
-    def get_region_interests(self, region_id: int) -> List[RegionInterest]:
-        """Get all points of interest for a specific region."""
+    def get_region_interests(self, region_id: int, conversation_id: str) -> List[RegionInterest]:
+        """Get all points of interest for a specific region and conversation."""
         with self.get_session() as session:
             return session.query(RegionInterest).filter(
-                RegionInterest.region_id == region_id
+                RegionInterest.region_id == region_id,
+                RegionInterest.conversation_id == conversation_id
             ).all()
     
     def add_region_interest(self, region_id: int, conversation_id: str, interest_type: str, points_of_interest: List[Dict[str, Any]]) -> RegionInterest:
