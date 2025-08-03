@@ -47,20 +47,6 @@ class UrbanExplorerAgent:
                     "required": ["area_name", "conversation_id"]
                 }
             },
-            # {
-            #     "name": "update_map",
-            #     "description": "Update the frontend map with all regions for a conversation via websocket. Automatically broadcasts to connected clients for real-time visualization. IMPORTANT: Always call this tool after getting new region coordinates to update the map display.",
-            #     "input_schema": {
-            #         "type": "object",
-            #         "properties": {
-            #             "conversation_id": {
-            #                 "type": "string",
-            #                 "description": "Current conversation ID to get and display all regions for"
-            #             }
-            #         },
-            #         "required": ["conversation_id"]
-            #     }
-            # },
             {
                 "name": "get_regional_interests_for_area",
                 "description": "Get points of interest for a specific area based on user interests. Searches for venues and places within the given area boundaries.",
@@ -85,7 +71,6 @@ class UrbanExplorerAgent:
         """Get the actual function for a tool name."""
         tool_functions = {
             "get_coordinates_for_area": get_area_coordinates,
-            # "update_map": update_map,
             "get_regional_interests_for_area": get_regional_interests
         }
         return tool_functions.get(tool_name)
