@@ -323,6 +323,12 @@ export default function MapPage() {
       )}
       <div ref={mapRef} className="h-full w-full" />
 
+      {/* <PolygonToVideoLogic
+        mapInstance={mapInstanceRef.current}
+        mapPolygons={mapPolygons}
+        singlePolygonInView={singlePolygonInView}
+      /> */}
+
       {showResetButton && (
         <button
           onClick={resetMapView}
