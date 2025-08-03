@@ -59,7 +59,7 @@ Return ONLY a valid JSON object with this structure. NO comments, NO additional 
       "rating": 4.5,
       "review_count": 123,
       "categories": ["cafe", "coffee"],
-      "emoji": ☕,
+      "emoji": "☕",
     }}
   ]
 }}

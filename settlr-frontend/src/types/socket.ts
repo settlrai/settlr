@@ -39,6 +39,7 @@ export type RegionPointOfInterest = {
   interest_type: string;
   points_of_interest: {
     name: string;
+    emoji: string;
     address: string;
     coordinates: {
       latitude: number;
