@@ -58,6 +58,55 @@ const getSinglePolygonWithPanelPadding = () => ({
   left: 256, // Left panel width (w-64)
 });
 
+// Random emoji arrays for loading animation
+const LOADING_EMOJIS = ["🏠", "🔍", "✨", "⭐", "💫", "🌳", "🏋️", "☕", "🍺"];
+
+// Check if a point is inside a polygon using ray casting algorithm
+const isPointInPolygon = (point: [number, number], polygon: [number, number][]) => {
+  const [x, y] = point;
+  let inside = false;
+  
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const [xi, yi] = polygon[i];
+    const [xj, yj] = polygon[j];
+    
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) {
+      inside = !inside;
+    }
+  }
+  
+  return inside;
+};
+
+// Generate random point within polygon bounds
+const generateRandomPointInPolygon = (coordinates: [number, number][]): [number, number] => {
+  // Get bounding box
+  const lngs = coordinates.map(coord => coord[0]);
+  const lats = coordinates.map(coord => coord[1]);
+  const minLng = Math.min(...lngs);
+  const maxLng = Math.max(...lngs);
+  const minLat = Math.min(...lats);
+  const maxLat = Math.max(...lats);
+  
+  // Generate random points until one is inside the polygon
+  let attempts = 0;
+  while (attempts < 50) { // Prevent infinite loop
+    const randomLng = minLng + Math.random() * (maxLng - minLng);
+    const randomLat = minLat + Math.random() * (maxLat - minLat);
+    const point: [number, number] = [randomLng, randomLat];
+    
+    if (isPointInPolygon(point, coordinates)) {
+      return point;
+    }
+    attempts++;
+  }
+  
+  // Fallback to center if no valid point found
+  const centerLng = (minLng + maxLng) / 2;
+  const centerLat = (minLat + maxLat) / 2;
+  return [centerLng, centerLat];
+};
+
 export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
@@ -81,6 +130,12 @@ export default function MapPage() {
   const propertyMarkerElementsRef = useRef<HTMLDivElement[]>([]);
   const [hoveredPOI, setHoveredPOI] = useState<string | null>(null);
   const [hoveredProperty, setHoveredProperty] = useState<number | null>(null);
+  
+  // Random emoji loading animation state
+  const [isShowingLoadingEmojis, setIsShowingLoadingEmojis] = useState(false);
+  const loadingEmojiMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const loadingEmojiIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const loadingEmojiTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [sessionId] = useState<string>(getOrCreateSessionId);
 
@@ -141,6 +196,9 @@ export default function MapPage() {
       // Clear loading/error states when new data arrives
       setIsLoadingRegionDetails(false);
       setRegionFetchError(null);
+      
+      // Stop loading emoji animation when socket data arrives
+      stopLoadingEmojiAnimation();
     };
 
     if (isConnected) {
@@ -260,29 +318,47 @@ export default function MapPage() {
     popupDiv.className =
       "absolute bottom-full mb-2 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-64 max-w-80 opacity-0 pointer-events-none transition-opacity duration-200";
     popupDiv.style.zIndex = "9999";
-    
+
     // Generate star rating HTML
-    const stars = [...Array(5)].map((_, i) => 
-      `<svg class="w-3 h-3 ${i < Math.floor(poi.rating) ? 'text-yellow-400' : 'text-gray-300'}" fill="currentColor" viewBox="0 0 20 20">
+    const stars = [...Array(5)]
+      .map(
+        (_, i) =>
+          `<svg class="w-3 h-3 ${
+            i < Math.floor(poi.rating) ? "text-yellow-400" : "text-gray-300"
+          }" fill="currentColor" viewBox="0 0 20 20">
         <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
       </svg>`
-    ).join('');
+      )
+      .join("");
 
     // Generate tags HTML
-    const tagsHtml = poi.categories.length > 0 
-      ? `<div class="flex flex-wrap gap-1 mt-2">
-          ${poi.categories.slice(0, 3).map(cat => 
-            `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${cat}</span>`
-          ).join('')}
-          ${poi.categories.length > 3 ? `<span class="text-xs text-gray-500">+${poi.categories.length - 3} more</span>` : ''}
+    const tagsHtml =
+      poi.categories.length > 0
+        ? `<div class="flex flex-wrap gap-1 mt-2">
+          ${poi.categories
+            .slice(0, 3)
+            .map(
+              (cat) =>
+                `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">${cat}</span>`
+            )
+            .join("")}
+          ${
+            poi.categories.length > 3
+              ? `<span class="text-xs text-gray-500">+${
+                  poi.categories.length - 3
+                } more</span>`
+              : ""
+          }
         </div>`
-      : '';
+        : "";
 
     popupDiv.innerHTML = `
       <div class="font-medium text-gray-800 text-sm mb-1">${poi.name}</div>
       <div class="flex items-center gap-2 mb-1">
         <div class="flex items-center">${stars}</div>
-        <span class="text-xs text-gray-600">${poi.rating.toFixed(1)} (${poi.review_count} reviews)</span>
+        <span class="text-xs text-gray-600">${poi.rating.toFixed(1)} (${
+      poi.review_count
+    } reviews)</span>
       </div>
       <div class="text-xs text-gray-600 mb-1">${poi.address}</div>
       ${tagsHtml}
@@ -403,6 +479,133 @@ export default function MapPage() {
     return { marker, element: markerDiv };
   };
 
+  const createLoadingEmojiMarker = async (
+    position: [number, number],
+    emoji: string,
+    animationDelay: number = 0
+  ) => {
+    if (!mapInstanceRef.current) {
+      console.log("No map instance for emoji marker");
+      return null;
+    }
+
+    console.log("Creating emoji marker:", emoji, "at", position);
+
+    const loader = new Loader({
+      apiKey: GOOGLE_MAPS_API_KEY,
+      version: "weekly",
+    });
+    const { AdvancedMarkerElement } = await loader.importLibrary("marker");
+
+    const markerDiv = document.createElement("div");
+    markerDiv.className =
+      "rounded-lg bg-pink-100 border-2 border-white shadow-lg transition-all duration-500 w-6 h-6 flex items-center justify-center opacity-0 transform scale-50";
+    markerDiv.style.fontSize = "12px";
+    markerDiv.innerHTML = emoji;
+
+    const marker = new AdvancedMarkerElement({
+      position: { lat: position[1], lng: position[0] },
+      map: mapInstanceRef.current,
+      content: markerDiv,
+      zIndex: 100, // Higher zIndex to ensure visibility
+    });
+
+    console.log("Emoji marker created, animating in after", animationDelay, "ms");
+
+    // Animate in after delay
+    setTimeout(() => {
+      markerDiv.classList.remove("opacity-0", "scale-50");
+      markerDiv.classList.add("opacity-100", "scale-100");
+      console.log("Emoji animated in:", emoji);
+    }, animationDelay);
+
+    // Animate out after random duration
+    const lifetime = 3000 + Math.random() * 2000; // 3-5 seconds for better visibility
+    setTimeout(() => {
+      markerDiv.classList.add("opacity-0", "scale-50");
+      console.log("Emoji starting to fade out:", emoji);
+      // Remove from map after animation
+      setTimeout(() => {
+        if (marker.map) {
+          marker.map = null;
+          console.log("Emoji marker removed:", emoji);
+        }
+      }, 500);
+    }, lifetime + animationDelay);
+
+    return marker;
+  };
+
+  const startLoadingEmojiAnimation = (polygonCoords: [number, number][]) => {
+    if (isShowingLoadingEmojis || !mapInstanceRef.current) return;
+    
+    console.log("Starting loading emoji animation for polygon:", polygonCoords.length, "points");
+    setIsShowingLoadingEmojis(true);
+    
+    const spawnEmoji = async () => {
+      // Check the current state, not the stale closure
+      if (!loadingEmojiIntervalRef.current || !mapInstanceRef.current) return;
+      
+      const randomPosition = generateRandomPointInPolygon(polygonCoords);
+      const randomEmoji = LOADING_EMOJIS[Math.floor(Math.random() * LOADING_EMOJIS.length)];
+      const animationDelay = Math.random() * 200; // 0-200ms delay
+      
+      console.log("Spawning emoji:", randomEmoji, "at position:", randomPosition);
+      
+      const marker = await createLoadingEmojiMarker(randomPosition, randomEmoji, animationDelay);
+      if (marker) {
+        loadingEmojiMarkersRef.current.push(marker);
+      }
+    };
+
+    // Spawn first emoji immediately
+    spawnEmoji();
+    
+    // Continue spawning emojis every 1000ms for testing
+    loadingEmojiIntervalRef.current = setInterval(() => {
+      spawnEmoji();
+    }, 1000);
+  };
+
+  const stopLoadingEmojiAnimation = () => {
+    console.log("Stopping loading emoji animation");
+    setIsShowingLoadingEmojis(false);
+    
+    // Clear interval to stop spawning new emojis
+    if (loadingEmojiIntervalRef.current) {
+      clearInterval(loadingEmojiIntervalRef.current);
+      loadingEmojiIntervalRef.current = null;
+    }
+    
+    // Clear timeout
+    if (loadingEmojiTimeoutRef.current) {
+      clearTimeout(loadingEmojiTimeoutRef.current);
+      loadingEmojiTimeoutRef.current = null;
+    }
+    
+    // Smoothly fade out all existing loading emoji markers
+    console.log("Smoothly removing", loadingEmojiMarkersRef.current.length, "loading emoji markers");
+    loadingEmojiMarkersRef.current.forEach((marker) => {
+      const markerElement = marker.content as HTMLElement;
+      if (markerElement) {
+        // Trigger fade out animation
+        markerElement.classList.add("opacity-0", "scale-50");
+        // Remove from map after animation completes
+        setTimeout(() => {
+          marker.map = null;
+        }, 500); // Match the CSS transition duration
+      } else {
+        // Fallback for markers without content
+        marker.map = null;
+      }
+    });
+    
+    // Clear the markers array after animations complete
+    setTimeout(() => {
+      loadingEmojiMarkersRef.current = [];
+    }, 500);
+  };
+
   const selectedPolygon = mapPolygons.find((p) => p.id === singlePolygonInView);
 
   useEffect(() => {
@@ -466,12 +669,17 @@ export default function MapPage() {
         // Add click event listener to select and zoom to this polygon
         polygonInstance.addListener("click", async () => {
           const shouldRefetch = singlePolygonInView !== polygonWithArea.id;
+          console.log("Polygon clicked:", polygonWithArea.region_name, "shouldRefetch:", shouldRefetch);
           setSinglePolygonInView(polygonWithArea.id);
           fitSinglePolygonBounds(polygonCoords);
 
           if (shouldRefetch) {
             setIsLoadingRegionDetails(true);
             setRegionFetchError(null);
+
+            // Start loading emoji animation for this region
+            console.log("Starting emoji animation for region:", polygonWithArea.region_name);
+            startLoadingEmojiAnimation(polygonWithArea.coordinates);
 
             try {
               await triggerRegionFetch(sessionId, polygonWithArea.id);
@@ -482,6 +690,8 @@ export default function MapPage() {
                   : "Failed to fetch region details"
               );
               setIsLoadingRegionDetails(false);
+              // Stop animation on error
+              stopLoadingEmojiAnimation();
             }
           }
         });
@@ -581,6 +791,13 @@ export default function MapPage() {
     });
   }, [hoveredProperty]);
 
+  // Cleanup loading emoji animation on unmount
+  useEffect(() => {
+    return () => {
+      stopLoadingEmojiAnimation();
+    };
+  }, []);
+
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
 
@@ -588,6 +805,10 @@ export default function MapPage() {
     setSinglePolygonInView(null);
     setHoveredPOI(null);
     setHoveredProperty(null);
+    
+    // Stop any ongoing loading animation
+    stopLoadingEmojiAnimation();
+    
     triggerGlobalFetch(sessionId);
 
     // If there are polygons, fit bounds to show all polygons
@@ -632,7 +853,7 @@ export default function MapPage() {
         onBackToOverview={resetMapView}
       />
 
-      <ConnectionStatus status={socketStatus} />
+      {/* <ConnectionStatus status={socketStatus} /> */}
 
       <ResponsiveChat
         hasPolygons={mapPolygons.length > 0}
