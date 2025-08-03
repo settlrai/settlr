@@ -16,19 +16,31 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const DEFAULT_CENTER = { lat: 51.5072, lng: -0.1276 };
 const DEFAULT_ZOOM = 11;
 
+// Generate random colors for polygons
+const generateRandomColor = () => {
+  const colors = [
+    "#ef4444", // red
+    "#f97316", // orange
+    "#eab308", // yellow
+    "#22c55e", // green
+    "#06b6d4", // cyan
+    "#3b82f6", // blue
+    "#8b5cf6", // violet
+    "#ec4899", // pink
+    "#f59e0b", // amber
+    "#10b981", // emerald
+    "#6366f1", // indigo
+    "#d946ef", // fuchsia
+  ];
+  return colors[Math.floor(Math.random() * colors.length)];
+};
+
 // Map padding constants for sidebar chat layout
 const getMapPadding = () => ({
   top: 20,
   right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
   bottom: 20,
   left: 20,
-});
-
-const getSinglePolygonPadding = () => ({
-  top: 40,
-  right: Math.min(window.innerWidth * 0.3, 450) + 48, // Chat width + padding
-  bottom: 40,
-  left: 40,
 });
 
 const getSinglePolygonWithPanelPadding = () => ({
@@ -52,6 +64,9 @@ export default function MapPage() {
     []
   );
 
+  // Store color mappings for polygons by area_name
+  const polygonColorsRef = useRef<Map<string, string>>(new Map());
+
   const {
     status: socketStatus,
     on,
@@ -73,12 +88,24 @@ export default function MapPage() {
 
   useEffect(() => {
     const handleMapUpdate: SettlrEvents["map_state"] = (data) => {
-      setMapPolygons(
-        data.regions.map((region) => ({
+      const polygonsWithColors = data.regions.map((region) => {
+        const areaName = region.region_name;
+
+        // Get existing color or generate new one
+        let color = polygonColorsRef.current.get(areaName);
+        if (!color) {
+          color = generateRandomColor();
+          polygonColorsRef.current.set(areaName, color);
+        }
+
+        return {
           coordinates: region.coordinates,
-          area_name: region.region_name,
-        }))
-      );
+          area_name: areaName,
+          color: color,
+        };
+      });
+
+      setMapPolygons(polygonsWithColors);
     };
 
     if (isConnected) {
@@ -254,8 +281,8 @@ export default function MapPage() {
           strokeColor: "#2D3748",
           strokeOpacity: 0.8,
           strokeWeight: 2,
-          fillColor: "#EDF2F7",
-          fillOpacity: 0.35,
+          fillColor: polygonWithArea.color,
+          fillOpacity: 0.2,
           map: mapInstanceRef.current,
         });
 
