@@ -1,6 +1,44 @@
 "use client";
 
 import { PolygonWithMeta } from "@/types/map";
+import { useEffect, useState } from "react";
+
+const LOADING_MESSAGES = [
+  "Analyzing neighborhood vibes...",
+  "Consulting local food critics...",
+  "Checking coffee shop density...",
+  "Reading the tea leaves...",
+  "Asking the pigeons for intel...",
+  "Decoding hipster frequencies...",
+  "Measuring gentrification levels...",
+  "Counting trendy bike lanes...",
+  "Surveying organic markets...",
+  "Evaluating brunch availability...",
+  "Testing Wi-Fi strength...",
+  "Calculating walkability scores...",
+  "Investigating nightlife quality...",
+  "Assessing artisanal cheese proximity...",
+  "Analyzing public transport karma...",
+  "Consulting neighborhood cats...",
+  "Measuring parking frustration levels...",
+  "Evaluating dog park politics...",
+  "Checking craft beer concentration...",
+  "Analyzing rent-to-happiness ratio...",
+];
+
+function LoadingMessage() {
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMessageIndex((prev) => (prev + 1) % LOADING_MESSAGES.length);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return LOADING_MESSAGES[messageIndex];
+}
 
 interface RegionDetailsPanelProps {
   selectedPolygon: PolygonWithMeta | undefined;
@@ -70,7 +108,7 @@ export default function RegionDetailsPanel({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Loading details...
+              <LoadingMessage />
             </div>
           )}
 
@@ -125,7 +163,8 @@ export default function RegionDetailsPanel({
                                 ))}
                               </div>
                               <span className="text-xs text-gray-500">
-                                {poi.rating.toFixed(1)} ({poi.review_count} reviews)
+                                {poi.rating.toFixed(1)} ({poi.review_count}{" "}
+                                reviews)
                               </span>
                             </div>
                             {poi.categories.length > 0 && (
