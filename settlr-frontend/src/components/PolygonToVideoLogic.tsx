@@ -1,9 +1,9 @@
-import { PolygonWithArea } from "@/types/map";
+import { PolygonWithMeta } from "@/types/map";
 import VideoOverlay from "./VideoOverlay";
 
 interface VideoOverlayProps {
   singlePolygonInView: string | null;
-  mapPolygons: PolygonWithArea[];
+  mapPolygons: PolygonWithMeta[];
   mapInstance: google.maps.Map | null;
 }
 

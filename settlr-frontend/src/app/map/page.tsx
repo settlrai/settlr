@@ -8,7 +8,7 @@ import {
   SOCKET_URL,
 } from "@/constants/api";
 import { useSocket } from "@/hooks/useSocket";
-import { PolygonWithArea } from "@/types/map";
+import { PolygonWithMeta } from "@/types/map";
 import { SettlrEvents } from "@/types/socket";
 import { triggerGlobalFetch, triggerRegionFetch } from "@/utils/regionApi";
 import { getOrCreateSessionId } from "@/utils/sessionUtils";
@@ -56,7 +56,7 @@ export default function MapPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
-  const [mapPolygons, setMapPolygons] = useState<PolygonWithArea[]>([]);
+  const [mapPolygons, setMapPolygons] = useState<PolygonWithMeta[]>([]);
   const [singlePolygonInView, setSinglePolygonInView] = useState<number | null>(
     null
   );
@@ -93,6 +93,7 @@ export default function MapPage() {
 
   useEffect(() => {
     const handleMapUpdate: SettlrEvents["map_state"] = (data) => {
+      console.log("Received map state update:", data);
       const polygonsWithColors = data.regions.map((region) => {
         const regionName = region.region_name;
         // Get existing color or generate new one
@@ -107,6 +108,7 @@ export default function MapPage() {
           coordinates: region.coordinates,
           region_name: regionName,
           color: color,
+          points_of_interest: region.points_of_interest,
         };
       });
 

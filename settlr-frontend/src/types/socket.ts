@@ -16,6 +16,21 @@ export interface SocketHookOptions {
   autoConnect?: boolean;
 }
 
+export type RegionPointOfInterest = {
+  id: number;
+  interest_type: string;
+  points_of_interest: {
+    name: string;
+    address: string;
+    coordinates: {
+      latitude: number;
+      longitude: number;
+    };
+    rating: number;
+    review_count: number;
+    categories: string[];
+  }[];
+};
 type SettlrMapStateData = {
   conversation_id: string;
   regions: {
@@ -24,6 +39,7 @@ type SettlrMapStateData = {
     coordinates: Polygon;
     region_name: string;
     created_at: string;
+    points_of_interest: RegionPointOfInterest[];
   }[];
 };
 export type SettlrEvents = {
