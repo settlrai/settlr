@@ -11,11 +11,13 @@ import AnimatedInput from "./AnimatedInput";
 type ResponsiveChatProps = {
   hasPolygons?: boolean;
   sessionId: string;
+  onFirstResponseLoadingChange?: (loading: boolean) => void;
 };
 
 function ResponsiveChat({
   hasPolygons = false,
   sessionId,
+  onFirstResponseLoadingChange,
 }: ResponsiveChatProps) {
   const [inputValue, setInputValue] = useState("");
   const [messages, setMessages] = useState<ChatMessagesState>([]);
@@ -48,9 +50,15 @@ function ResponsiveChat({
     if (!inputValue.trim() || isLoading) return;
 
     const userMessage = inputValue.trim();
+    const isFirstResponse = messages.length === 0;
 
     removeErrorMessages();
     setIsLoading(true);
+
+    // Notify parent about first response loading state
+    if (isFirstResponse) {
+      onFirstResponseLoadingChange?.(true);
+    }
 
     setMessages((prev) => [...prev, { type: "user", content: userMessage }]);
 
@@ -65,6 +73,11 @@ function ResponsiveChat({
     } finally {
       setIsLoading(false);
       setInputValue("");
+      
+      // Stop first response loading when done
+      if (isFirstResponse) {
+        onFirstResponseLoadingChange?.(false);
+      }
     }
   };
 
