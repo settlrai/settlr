@@ -53,7 +53,7 @@ class UrbanExplorerAgent:
                 },
                 {
                     "name": "get_properties_in_region",
-                    "description": "Get all rental properties that fall within the specified region area. Uses geometric filtering to return properties located inside the region boundaries.",
+                    "description": "Get all rental properties that fall within the specified region area. Uses geometric filtering to return properties located inside the region boundaries. Can optionally filter by maximum price.",
                     "input_schema": {
                         "type": "object",
                         "properties": {
@@ -64,6 +64,10 @@ class UrbanExplorerAgent:
                             "conversation_id": {
                                 "type": "string",
                                 "description": "Current conversation ID for websocket broadcasting"
+                            },
+                            "max_price": {
+                                "type": "integer",
+                                "description": "Optional maximum price filter in pounds per month (e.g., 2000 for £2000/month). If not provided, shows all properties."
                             }
                         },
                         "required": ["region_id", "conversation_id"]
