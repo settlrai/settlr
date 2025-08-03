@@ -5,6 +5,8 @@ import asyncio
 from typing import Optional
 from dotenv import load_dotenv
 from database import get_db_manager
+from shapely.geometry import Polygon, Point
+
 from websocket_manager import websocket_manager
 
 def get_regional_interests(conversation_id: str, region_id: int, user_interests: str) -> str:
@@ -122,8 +124,43 @@ CRITICAL:
             poi_data = json.loads(clean_json)
             print(f"[DEBUG] Parsed POI data keys: {list(poi_data.keys())}")
             
-            # Save each interest category to database
+            area_coordinates = json.loads(area_coordinates)
+            
+            # filter out pois outside of 
+            if not area_coordinates or len(area_coordinates) < 3:
+                print(f"[ERROR] Invalid region coordinates for region_id {region_id}")
+                
+            try:
+                polygon = Polygon(area_coordinates)
+                if not polygon.is_valid:
+                    print(f"[ERROR] Invalid polygon created for region_id {region_id}")
+                    return poi_json
+            except Exception as e:
+                print(f"[ERROR] Error creating polygon: {e}")
+                return poi_json
+            
+            filtered_poi_data = {}
+
             for interest_description, poi_list in poi_data.items():
+                print(f"[DEBUG] Checking interest: {interest_description}, POI count: {len(poi_list) if poi_list else 0}")
+                if poi_list:  # Only save if there are POIs
+                    filtered_poi_list = []
+
+                    for poi in poi_list:
+                        coordinates = poi['coordinates']
+                        point = Point(coordinates['longitude'], coordinates['latitude'])
+
+                        if polygon.contains(point):
+                            print(f"[DEBUG] filtered out {point}")
+                            filtered_poi_list.append(poi)
+
+                    if len(filtered_poi_list) > 0:
+                        filtered_poi_data[interest_description] = filtered_poi_list
+            
+            print(f"[DEBUG] filtered out filtered_poi_data: {filtered_poi_data}")
+
+            # Save each interest category to database
+            for interest_description, poi_list in filtered_poi_data.items():
                 print(f"[DEBUG] Processing interest: {interest_description}, POI count: {len(poi_list) if poi_list else 0}")
                 if poi_list:  # Only save if there are POIs
                     result = db_manager.add_region_interest(
@@ -134,6 +171,8 @@ CRITICAL:
                     )
                     print(f"[DEBUG] Saved region interest with ID: {result.id}")
             
+            poi_json = json.dumps(filtered_poi_data)
+
             # Broadcast websocket update
             try:
                 loop = asyncio.get_event_loop()
