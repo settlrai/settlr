@@ -18,7 +18,8 @@ class WebSocketManager:
             cors_allowed_origins="*",
             logger=True,
             engineio_logger=True,
-            async_mode='asgi'
+            async_mode='asgi',
+            ping_timeout=60,
         )
         
         # Track connected clients
