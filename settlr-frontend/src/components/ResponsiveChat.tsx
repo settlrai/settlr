@@ -53,7 +53,6 @@ function ResponsiveChat({
     setIsLoading(true);
 
     setMessages((prev) => [...prev, { type: "user", content: userMessage }]);
-    setInputValue("");
 
     try {
       await streamChatMessage(
@@ -65,6 +64,7 @@ function ResponsiveChat({
       );
     } finally {
       setIsLoading(false);
+      setInputValue("");
     }
   };
 
