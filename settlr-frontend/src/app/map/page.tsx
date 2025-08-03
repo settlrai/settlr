@@ -1,8 +1,8 @@
 "use client";
 
-import ResponsiveChat from "@/components/ResponsiveChat";
-import RegionDetailsPanel from "@/components/RegionDetailsPanel";
 import ConnectionStatus from "@/components/ConnectionStatus";
+import RegionDetailsPanel from "@/components/RegionDetailsPanel";
+import ResponsiveChat from "@/components/ResponsiveChat";
 import {
   GOOGLE_MAPS_API_KEY,
   GOOGLE_MAPS_MAP_ID,
@@ -11,7 +11,7 @@ import {
 } from "@/constants/api";
 import { useSocket } from "@/hooks/useSocket";
 import { PolygonWithMeta } from "@/types/map";
-import { SettlrEvents, RegionPointOfInterest } from "@/types/socket";
+import { RegionPointOfInterest, SettlrEvents } from "@/types/socket";
 import { triggerGlobalFetch, triggerRegionFetch } from "@/utils/regionApi";
 import { getOrCreateSessionId } from "@/utils/sessionUtils";
 import { Loader } from "@googlemaps/js-api-loader";
@@ -99,23 +99,25 @@ export default function MapPage() {
   useEffect(() => {
     const handleMapUpdate: SettlrEvents["map_state"] = (data) => {
       console.log("Received map state update:", data);
-      const polygonsWithColors = data.regions.map((region) => {
-        const regionName = region.region_name;
-        // Get existing color or generate new one
-        let color = polygonColorsRef.current.get(regionName);
-        if (!color) {
-          color = generateRandomColor();
-          polygonColorsRef.current.set(regionName, color);
-        }
+      const polygonsWithColors = data.regions
+        .map((region) => {
+          const regionName = region.region_name;
+          // Get existing color or generate new one
+          let color = polygonColorsRef.current.get(regionName);
+          if (!color) {
+            color = generateRandomColor();
+            polygonColorsRef.current.set(regionName, color);
+          }
 
-        return {
-          id: region.region_id,
-          coordinates: region.coordinates,
-          region_name: regionName,
-          color: color,
-          points_of_interest: region.points_of_interest,
-        };
-      });
+          return {
+            id: region.region_id,
+            coordinates: region.coordinates,
+            region_name: regionName,
+            color: color,
+            points_of_interest: region.points_of_interest,
+          };
+        })
+        .filter((reg) => reg.id !== null);
 
       setMapPolygons(polygonsWithColors);
       // Clear loading/error states when new data arrives
