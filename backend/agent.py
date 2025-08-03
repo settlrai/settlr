@@ -133,7 +133,11 @@ class UrbanExplorerAgent:
                     max_tokens=2000,
                     system=instructions_with_context,
                     messages=messages,
-                    tools=tools
+                    tools=tools,
+                    thinking={
+                        "type": "enabled",
+                        "budget_tokens": 1024
+                    },
                 )
                 
                 # Check if we have tool calls
@@ -187,6 +191,10 @@ class UrbanExplorerAgent:
                         system=instructions_with_context,
                         messages=messages,
                         tools=tools,
+                        thinking={
+                            "type": "enabled",
+                            "budget_tokens": 1024
+                        },
                         stream=True
                     )
                     
