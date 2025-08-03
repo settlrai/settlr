@@ -19,18 +19,18 @@ const DEFAULT_ZOOM = 11;
 // Generate random colors for polygons
 const generateRandomColor = () => {
   const colors = [
-    "#ef4444", // red
-    "#f97316", // orange
-    "#eab308", // yellow
-    "#22c55e", // green
-    "#06b6d4", // cyan
-    "#3b82f6", // blue
-    "#8b5cf6", // violet
-    "#ec4899", // pink
-    "#f59e0b", // amber
-    "#10b981", // emerald
-    "#6366f1", // indigo
-    "#d946ef", // fuchsia
+    "#ef4444",
+    "#f97316",
+    "#eab308",
+    "#22c55e",
+    "#06b6d4",
+    "#3b82f6",
+    "#8b5cf6",
+    "#ec4899",
+    "#f59e0b",
+    "#10b981",
+    "#6366f1",
+    "#d946ef",
   ];
   return colors[Math.floor(Math.random() * colors.length)];
 };
