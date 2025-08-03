@@ -11,7 +11,11 @@ import {
 } from "@/constants/api";
 import { useSocket } from "@/hooks/useSocket";
 import { PolygonWithMeta } from "@/types/map";
-import { RegionPointOfInterest, SettlrEvents } from "@/types/socket";
+import {
+  RegionPointOfInterest,
+  RegionProperty,
+  SettlrEvents,
+} from "@/types/socket";
 import { triggerGlobalFetch, triggerRegionFetch } from "@/utils/regionApi";
 import { getOrCreateSessionId } from "@/utils/sessionUtils";
 import { Loader } from "@googlemaps/js-api-loader";
@@ -59,6 +63,7 @@ export default function MapPage() {
   const mapInstanceRef = useRef<google.maps.Map>(null);
   const [showResetButton, setShowResetButton] = useState(false);
   const [mapPolygons, setMapPolygons] = useState<PolygonWithMeta[]>([]);
+  const [mapProperties, setMapProperties] = useState<RegionProperty[]>([]);
   const [singlePolygonInView, setSinglePolygonInView] = useState<number | null>(
     null
   );
@@ -70,7 +75,12 @@ export default function MapPage() {
   );
   const poiMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
   const poiMarkerElementsRef = useRef<HTMLDivElement[]>([]);
+  const propertyMarkersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>(
+    []
+  );
+  const propertyMarkerElementsRef = useRef<HTMLDivElement[]>([]);
   const [hoveredPOI, setHoveredPOI] = useState<string | null>(null);
+  const [hoveredProperty, setHoveredProperty] = useState<number | null>(null);
 
   const [sessionId] = useState<string>(getOrCreateSessionId);
 
@@ -120,6 +130,14 @@ export default function MapPage() {
         .filter((reg) => reg.id !== null);
 
       setMapPolygons(polygonsWithColors);
+
+      // Process properties if present
+      if (data.properties && data.properties.length > 0) {
+        setMapProperties(data.properties);
+      } else {
+        setMapProperties([]);
+      }
+
       // Clear loading/error states when new data arrives
       setIsLoadingRegionDetails(false);
       setRegionFetchError(null);
@@ -248,6 +266,70 @@ export default function MapPage() {
     return { marker, element: markerDiv };
   };
 
+  const createPropertyMarker = async (
+    property: RegionProperty,
+    propertyId: number
+  ) => {
+    if (!mapInstanceRef.current) return null;
+
+    const loader = new Loader({
+      apiKey: GOOGLE_MAPS_API_KEY,
+      version: "weekly",
+    });
+    const { AdvancedMarkerElement } = await loader.importLibrary("marker");
+
+    // Parse coordinates from string format like "[-0.0661841873748017,51.55924745049346]"
+    const coordinates = JSON.parse(property.coordinates);
+    const [lng, lat] = coordinates;
+
+    // Create property marker element
+    const markerDiv = document.createElement("div");
+    markerDiv.className =
+      "rounded-lg bg-green-500 border-2 border-white shadow-lg transition-all duration-200 w-6 h-6 flex items-center justify-center";
+    markerDiv.style.cursor = "pointer";
+    markerDiv.dataset.propertyId = propertyId.toString();
+    markerDiv.innerHTML = "🏠";
+    markerDiv.style.fontSize = "12px";
+
+    // Create popup element
+    const popupDiv = document.createElement("div");
+    popupDiv.className =
+      "absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-white border border-gray-300 rounded-lg shadow-lg p-3 min-w-48 z-10 opacity-0 pointer-events-none transition-opacity duration-200";
+    popupDiv.innerHTML = `
+      <div class="font-medium text-gray-800 mb-2 text-sm">${property.title}</div>
+      <a href="${property.property_link}" target="_blank" class="inline-block bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded transition-colors">
+        View Property
+      </a>
+    `;
+
+    // Container for marker and popup
+    const containerDiv = document.createElement("div");
+    containerDiv.className = "relative";
+    containerDiv.appendChild(markerDiv);
+    containerDiv.appendChild(popupDiv);
+
+    // Add hover events
+    containerDiv.addEventListener("mouseenter", () => {
+      popupDiv.classList.remove("opacity-0", "pointer-events-none");
+      popupDiv.classList.add("opacity-100", "pointer-events-auto");
+      setHoveredProperty(propertyId);
+    });
+
+    containerDiv.addEventListener("mouseleave", () => {
+      popupDiv.classList.add("opacity-0", "pointer-events-none");
+      popupDiv.classList.remove("opacity-100", "pointer-events-auto");
+      setHoveredProperty(null);
+    });
+
+    const marker = new AdvancedMarkerElement({
+      position: { lat, lng },
+      map: mapInstanceRef.current,
+      content: containerDiv,
+    });
+
+    return { marker, element: markerDiv };
+  };
+
   const selectedPolygon = mapPolygons.find((p) => p.id === singlePolygonInView);
 
   useEffect(() => {
@@ -256,7 +338,7 @@ export default function MapPage() {
         return;
       }
 
-      // Clear existing polygons, labels, and POI markers
+      // Clear existing polygons, labels, POI markers, and property markers
       polygonInstancesRef.current.forEach((polygon) => {
         polygon.setMap(null);
       });
@@ -272,6 +354,12 @@ export default function MapPage() {
       });
       poiMarkersRef.current = [];
       poiMarkerElementsRef.current = [];
+
+      propertyMarkersRef.current.forEach((marker) => {
+        marker.map = null;
+      });
+      propertyMarkersRef.current = [];
+      propertyMarkerElementsRef.current = [];
 
       if (mapPolygons.length === 0) {
         return;
@@ -304,22 +392,24 @@ export default function MapPage() {
 
         // Add click event listener to select and zoom to this polygon
         polygonInstance.addListener("click", async () => {
+          const shouldRefetch = singlePolygonInView !== polygonWithArea.id;
           setSinglePolygonInView(polygonWithArea.id);
           fitSinglePolygonBounds(polygonCoords);
 
-          // Trigger API call to fetch region details
-          setIsLoadingRegionDetails(true);
-          setRegionFetchError(null);
+          if (shouldRefetch) {
+            setIsLoadingRegionDetails(true);
+            setRegionFetchError(null);
 
-          try {
-            await triggerRegionFetch(sessionId, polygonWithArea.id);
-          } catch (error) {
-            setRegionFetchError(
-              error instanceof Error
-                ? error.message
-                : "Failed to fetch region details"
-            );
-            setIsLoadingRegionDetails(false);
+            try {
+              await triggerRegionFetch(sessionId, polygonWithArea.id);
+            } catch (error) {
+              setRegionFetchError(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to fetch region details"
+              );
+              setIsLoadingRegionDetails(false);
+            }
           }
         });
 
@@ -362,6 +452,17 @@ export default function MapPage() {
         }
       }
 
+      // Render property markers when zoomed into a region
+      if (singlePolygonInView && mapProperties.length > 0) {
+        for (const property of mapProperties) {
+          const markerData = await createPropertyMarker(property, property.id);
+          if (markerData) {
+            propertyMarkersRef.current.push(markerData.marker);
+            propertyMarkerElementsRef.current.push(markerData.element);
+          }
+        }
+      }
+
       // Auto-zoom to fit all polygons when they're added
       if (mapPolygons.length > 0) {
         fitPolygonBounds();
@@ -371,6 +472,7 @@ export default function MapPage() {
     renderPolygons();
   }, [
     mapPolygons,
+    mapProperties,
     fitPolygonBounds,
     fitSinglePolygonBounds,
     singlePolygonInView,
@@ -392,12 +494,27 @@ export default function MapPage() {
     });
   }, [hoveredPOI]);
 
+  // Handle property marker hover effects
+  useEffect(() => {
+    propertyMarkerElementsRef.current.forEach((element) => {
+      const propertyId = element.dataset.propertyId;
+      if (propertyId === hoveredProperty?.toString()) {
+        element.className =
+          "rounded-lg bg-green-500 border-2 border-white shadow-lg transition-all duration-200 w-8 h-8 flex items-center justify-center";
+      } else {
+        element.className =
+          "rounded-lg bg-green-500 border-2 border-white shadow-lg transition-all duration-200 w-6 h-6 flex items-center justify-center";
+      }
+    });
+  }, [hoveredProperty]);
+
   const resetMapView = () => {
     if (!mapInstanceRef.current) return;
 
     // Reset selection when going back to overview
     setSinglePolygonInView(null);
     setHoveredPOI(null);
+    setHoveredProperty(null);
     triggerGlobalFetch(sessionId);
 
     // If there are polygons, fit bounds to show all polygons

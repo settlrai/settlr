@@ -16,6 +16,24 @@ export interface SocketHookOptions {
   autoConnect?: boolean;
 }
 
+export type RegionProperty = {
+  address: string;
+  area_sqm?: number | null;
+  bathrooms?: number | null;
+  bedrooms?: number | null;
+  coordinates: string; // "[-0.0661841873748017,51.55924745049346]"
+  description?: string | null;
+  floor_plan_url?: string | null;
+  id: number;
+  images: string; // JSON string of image urls array
+  price: number;
+  property_id: number;
+  property_link: string;
+  search_area: string;
+  search_query: string;
+  source: string;
+  title: string;
+};
 export type RegionPointOfInterest = {
   id: number;
   interest_type: string;
@@ -33,6 +51,7 @@ export type RegionPointOfInterest = {
 };
 type SettlrMapStateData = {
   conversation_id: string;
+  properties?: RegionProperty[];
   regions: {
     conversation_id: string;
     region_id: number;
