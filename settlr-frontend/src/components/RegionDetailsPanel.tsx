@@ -168,7 +168,7 @@ export default function RegionDetailsPanel({
                               </span>
                             </div>
                             {poi.categories.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
+                              <div className="flex flex-wrap gap-1 mb-2">
                                 {poi.categories
                                   .slice(0, 3)
                                   .map((category, catIndex) => (
@@ -186,6 +186,15 @@ export default function RegionDetailsPanel({
                                 )}
                               </div>
                             )}
+                            <a
+                              href={`https://www.google.com/maps/search/${encodeURIComponent(poi.name)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-block bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1 rounded transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              View on Google Maps
+                            </a>
                           </div>
                         );
                       })}
